@@ -1,21 +1,30 @@
 # Ekaggata
-A small virtual machne with its work assembly language
+A small virtual computer
 
 
 ## What is this
 
-Ekaggata is an attempt to create a virtual machine that works sort of like an embedded system, where hardware IO is accessible through registers on the machine. 
-I am also building up a little ISA to learn more about computer architecture. The various opcodes can be seen in "opcodes.x".
+Ekaggata is an attempt to create a virtual computer that works sort of like an embedded system, where hardware IO is accessible through registers on the machine. 
 
-This project is quite hacky. I use [X macros](https://en.wikipedia.org/wiki/X_Macro) for storing various internal data, like register names and opcode information.
+I am also building up a little ISA to learn more about computer architecture. The various opcodes can be seen in ```opcodes.x```.
 
+The ```*.x``` files use a concept called [X macros](https://en.wikipedia.org/wiki/X_Macro). It is a terrifying hack, but also very convenient for storing related data together in C.
 
-Ekagatta depends on SDL2 for graphics display, and the build file only runs on Linux.
+## How to run
+Ekagatta depends on SDL2 for graphics display, and the build file only runs on Linux. Instructions for running on Windows and MacOS will be added.
 
-```./compile``` to execute
+So to compile and execute, simply run
+```./compile``` 
 
+This will run the python script ```assemble.py``` to translate ```test.ls``` (our "assembly" file) into a format the C pre-processor can understand and write instructions with. It is quite hacky, but it means we can use the C compiler to check for simple mistakes, like spelling instruction names wrong.
 
-## Some more info
-Please do not mind how the .ls (litte assembly) is compiled, it will be fixed later. For now, a python scripts wraps each line in an X Macro, and this is imported into the ```asm.c``` file, where the values of line are put into a struct and placed into memory...
-
-There are still loads of things to figure out :)
+## Shortcomings
+Things that are missing but I plan on adding:
+  * Labels
+  * Floats
+  * Audio IO
+  * Keyboard IO
+  * Networking IO
+  * An actual assembler
+  * Definitions of memory mappings
+  * And probably more!
