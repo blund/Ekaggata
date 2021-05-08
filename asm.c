@@ -1,0 +1,428 @@
+#include <stdint.h>
+#include <stdio.h>
+#include <malloc.h>
+#include <stdlib.h>
+
+#include <limits.h>
+
+#include <unistd.h>
+#include "asm.h"
+
+#define  SDL_DISABLE_IMMINTRIN_H 1
+#include <SDL2/SDL.h>
+
+
+// Om grafikk
+// https://gamedev.stackexchange.com/questions/157604/how-to-get-access-to-framebuffer-as-a-uint32-t-in-sdl2
+// Det neste vi vil gjøre er å bruke en framebuffer til å displaye noe bilder :)
+// Kan sikkert gjøres med ren opengl?
+// http://www.songho.ca/opengl/gl_pbo.html
+
+// Om lyd:
+// https://discourse.libsdl.org/t/feeding-the-audio-buffer/11432/3
+
+// Om hvordan en CPU virker:
+// https://everything2.com/title/modifying+IP%252FPC+instead+of+using+%2522JMP%2522
+
+
+
+#define STORAGE_OFFSET     1024
+#define FRAMEBUFFER_OFFSET 4096
+
+#define DISPLAY_SIZE 128
+  
+
+#define INSTR(PC) inst_mem[cpu.r[PC]]
+#define ASM(opcode, a, b) (Instr){.op = opcode, .reg_to = a, .reg_from = b}
+
+
+// https://en.wikipedia.org/wiki/X_Macro
+const char* register_names[] = {
+#define X(name) [name] = #name,
+#include "registers.x"
+#undef X
+};
+
+const char* opcode_names[] = {
+#define X(op, name, type) [op] = #name,
+#include "opcodes.x"
+#undef X
+};
+
+const Opcode_Type opcode_types[] = {
+#define X(op, name, type) [op] = type,
+#include "opcodes.x"
+#undef X
+};
+
+const Op opcodes[] = {
+#define X(op, name, type) [op] = op,
+#include "opcodes.x"
+#undef X
+};
+
+
+
+void print_state (CPU* cpu) {
+  for (int i = 0; i < 8; i++) {
+    printf("R%i = 0x%x (%i)\n", i, cpu->r[i], cpu->r[i]);
+  }
+  printf("PC = 0x%x (%i)\n", cpu->r[PC],  cpu->r[PC]);
+  
+  printf("\n");
+}
+
+
+void print_instr (Instr instr) {
+
+  if (!opcode_types[instr.op]) {
+    printf(" -> NOP\n");
+    return;
+  }
+
+  
+  if ((opcodes[instr.op] >= JMP) && (opcodes[instr.op] <= JGT)) {
+    printf(" -> JMP %i\n", instr.reg_to);
+    return;
+  }
+    
+  printf(" -> %s %s ", opcode_names[instr.op], register_names[instr.reg_to]);
+  
+  switch (opcode_types[instr.op]) {
+  case REG:
+    printf("%s\n", register_names[instr.reg_from]);
+    break;
+  case IMM:
+    printf("$0x%x (%i)\n", instr.imm, instr.imm);
+    break;
+  case ADR:
+    printf("[%s]\n", register_names[instr.reg_from]);
+    break;
+  default:
+    printf("Fikk ugyldig opcode-type. Du har nok rørt bs-data\n");
+    exit(1);
+  }
+}
+
+void eval (CPU* cpu, Instr instr);
+inline void eval (CPU* cpu, Instr instr) {
+  // @TODO - her er det mulighet for å legge inn noen asserts i kjøringen! Som at man har overtrådt minnegrenser eller noe slik.
+  switch (instr.op) {
+
+  case MOV:
+    cpu->r[instr.reg_to] = cpu->r[instr.reg_from];
+    break;
+
+  case MOV_imm:
+    
+    cpu->r[instr.reg_to] = instr.imm;
+    break;
+
+  case ADD:
+    cpu->r[instr.reg_to] += cpu->r[instr.reg_from];
+    break;
+
+  case ADD_imm:
+    cpu->r[instr.reg_to] += instr.imm;
+    break;
+
+  case SUB:
+    cpu->r[instr.reg_to] -= cpu->r[instr.reg_from];
+    break;
+    
+  case SUB_imm:
+    cpu->r[instr.reg_to] -= instr.imm;
+    break;
+    
+  case LDR_adr:
+    cpu->r[instr.reg_to] = *(s32 *)(cpu->memory + cpu->r[instr.reg_from]);
+    break;
+
+  case STR_adr:
+    *(s32 *)(cpu->memory + cpu->r[instr.reg_from]) = cpu->r[instr.reg_to]; // @MERK at vi bruker reg_to (første argument) som kilde.
+    break;
+  
+  case JMP:
+    cpu->r[PC] = instr.reg_to;
+    break;
+    
+  case JMP_imm:
+    cpu->r[PC] = instr.reg_to; // @MERK!!!! - for rekkefølge, vil bruke første arg.
+    break;
+
+  case JEQ:
+    if (cpu->flags & Z) {
+      cpu->r[PC] = instr.reg_to;
+    } else {
+      cpu->r[PC]++;
+    }
+    break;
+
+  case JGT:
+    if (!(cpu->flags & Z) && (!!(cpu->flags & N) == !!(cpu->flags & V))) {
+      cpu->r[PC] = instr.reg_to;
+    } else {
+      cpu->r[PC]++;
+    }
+    break;
+    
+  case JLT:
+    if ((cpu->flags & N) != (cpu->flags & V)) {
+      cpu->r[PC] = instr.reg_to;
+    } else {
+      cpu->r[PC]++;
+    }
+    break;
+        
+    
+  case CMP:
+    {
+      // Om hvordan man lager LT, GT osv... fra NZCV
+      // https://community.arm.com/developer/ip-products/processors/b/processors-ip-blog/posts/condition-codes-1-condition-flags-and-codes
+
+      
+      s32 diff              = cpu->r[instr.reg_to] - cpu->r[instr.reg_from];
+      u32 unsigned_overflow = (cpu->r[instr.reg_to] + cpu->r[instr.reg_from]) < cpu->r[instr.reg_to];
+      s32 signed_overflow   = (cpu->r[instr.reg_to] > 0 && cpu->r[instr.reg_from]) > INT_MAX - cpu->r[instr.reg_from];
+
+      cpu->flags = 0;
+      
+      cpu->flags |= diff               ? 0 : Z;
+      cpu->flags |= diff < 0           ? N : 0;
+      cpu->flags |= unsigned_overflow  ? C : 0; 
+      cpu->flags |= signed_overflow    ? V : 0;
+      
+      printf("eq: %i\n", (cpu->flags & Z));
+      printf("gt: %i\n", !(cpu->flags & Z) && (cpu->flags & N) == (cpu->flags & V));
+      printf("lt: %i\n", (cpu->flags & N) != (cpu->flags & V));
+    }
+    break;
+    
+  case CMP_imm:
+    {
+      // Om hvordan man lager LT, GT osv... fra NZCV
+      // https://community.arm.com/developer/ip-products/processors/b/processors-ip-blog/posts/condition-codes-1-condition-flags-and-codes
+      
+      s32 diff              =  cpu->r[instr.reg_to] - instr.imm;
+      u32 unsigned_overflow = (cpu->r[instr.reg_to] + instr.imm) < cpu->r[instr.reg_to];
+      s32 signed_overflow   = (cpu->r[instr.reg_to] > 0 && instr.imm) > INT_MAX - instr.imm;
+
+      cpu->flags = 0;
+      
+      cpu->flags |= diff               ? 0 : Z;
+      cpu->flags |= diff < 0           ? N : 0;
+      cpu->flags |= unsigned_overflow  ? C : 0; 
+      cpu->flags |= signed_overflow    ? V : 0;
+
+      #ifdef DEBUG
+      printf("eq: %i\n", (cpu->flags & Z));
+      printf("gt: %i\n", !(cpu->flags & Z) && (cpu->flags & N) == (cpu->flags & V));
+      printf("lt: %i\n", (cpu->flags & N) != (cpu->flags & V));
+      #endif
+    }
+    break;
+    
+  default:
+    printf("FEIL I KJØRING! Fikk ukjent opcode %i. Forsøker du å kjøre vilkårlig data?\n", instr.op);
+    exit(1);
+  }
+}
+
+static uint8_t  *audio_chunk;
+static uint32_t audio_len;
+static uint8_t  *audio_pos;
+
+/* The audio function callback takes the following parameters:
+   stream:  A pointer to the audio buffer to be filled
+   len:     The length (in bytes) of the audio buffer
+*/
+void fill_audio(void *udata, uint8_t *stream, int len)
+{
+  printf("Schwopp\n!");
+  /* Only play if we have data left */
+  if ( audio_len == 0 )
+    return;
+
+  printf("Bangin!\n");
+  
+  /* Mix as much data as possible */
+  len = ( len > audio_len ? audio_len : len );
+  SDL_MixAudio(stream, audio_pos, len, SDL_MIX_MAXVOLUME);
+  audio_pos += len;
+  audio_len -= len;
+}
+
+
+int main () {
+
+  SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO);
+  SDL_Window * window = SDL_CreateWindow("EKAGGATA",
+                                         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                         512, 512, 0);
+
+  SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
+  SDL_Texture  *display  = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 128, 128);
+  
+
+
+  // Sett opp lyd-greier
+  SDL_AudioSpec wanted;
+  wanted.freq = 22050;
+  wanted.format = AUDIO_S16;
+  wanted.channels = 2;   
+  wanted.samples  = 1024;
+  wanted.callback = fill_audio;
+  wanted.userdata = NULL;
+  SDL_AudioDeviceID device;
+  
+  if ( (device = SDL_OpenAudio(&wanted, NULL)) < 0 ) {
+    fprintf(stderr, "Couldn't open audio: %s\n", SDL_GetError());
+    return(-1);
+  }
+  //return(0);
+
+ 
+
+  audio_chunk = (uint8_t*)malloc(2048*sizeof(uint8_t));
+  audio_len = 2048;
+  audio_pos = audio_chunk;
+  
+  for (int i = 0; i < 2048; i++) {
+    audio_chunk[i] = rand();
+  }
+
+
+  
+  SDL_PauseAudioDevice(device, 0);
+
+  /*
+  puts("2");
+  
+
+  //while ( audio_len > 0 ) {
+  //  SDL_Delay(100);     
+  //}
+
+  puts("3");
+  
+  printf("Juhu!\n");
+  SDL_CloseAudio();
+  */
+
+
+
+  
+  // Initialiser CPU og minne
+  CPU cpu = {};
+
+  cpu.memory      = malloc(4*1024*1024);             
+  cpu.storage     = cpu.memory + STORAGE_OFFSET;     // @MERK - Disse to er bare debug-verdier som kan brukes i main-funksjonen. Kan ikke nås
+  cpu.framebuffer = cpu.memory + FRAMEBUFFER_OFFSET; // med assembly (enda?)
+
+
+  Instr* inst_mem = cpu.memory; // Bare et 'alias' for minnet hvor instruksjoner ligger.
+  // Brukes bare i main.
+
+
+
+  // Piksel-test
+  unsigned int* pixels = (unsigned int*)cpu.framebuffer;
+  
+
+  puts("\n\n [ INFO ] \n");
+  printf("Instr size: %lu bytes\n", sizeof(Instr));
+  puts("");
+  printf("mem start: %p\n", inst_mem); 
+  puts("\n\n [ STARTER PROGRAM ] \n");
+
+  /*
+  inst_mem[0] = ASM(MOV_imm, R0, 10);
+  inst_mem[1] = ASM(MOV_imm, R1, 3);
+  inst_mem[2] = ASM(CMP,     R0, R1);
+  inst_mem[3] = ASM(JGT,     5,  R1);
+  inst_mem[4] = ASM(MOV_imm, R7, 100);
+  inst_mem[5] = ASM(MOV_imm, R1, 69);
+  inst_mem[6] = ASM(MOV_imm, R0, 0xDEADBEEF);
+  */
+  /*
+  // Assembly-kode som skal kjøres
+  inst_mem[0] = ASM(MOV_imm, R7, 16384); // Hvor mange piksler vi vil tegne
+  inst_mem[1] = ASM(MOV_imm, R0, FRAMEBUFFER_OFFSET);
+  inst_mem[2] = ASM(MOV_imm, R1, 0xde000000);  // Farge som skal tegnes
+  inst_mem[3] = ASM(STR_adr, R1, R0);          // [R0] <- R1
+  inst_mem[4] = ASM(ADD_imm, R0, 0x4);         // Inkrementer til neste piksel (altså 4 byte, RGBA - 8888)
+  inst_mem[5] = ASM(ADD_imm, R1, 0x200);       // "Inkrementer" fargeverdien for gradienten.
+  inst_mem[6] = ASM(SUB_imm, R7, 1);
+  inst_mem[7] = ASM(CMP_imm, R7, 0); // Sjekk om vi har tegnet alle pixlene
+  inst_mem[8] = ASM(JEQ,     100, 0);
+  inst_mem[9] = ASM(JMP_imm, 3,  0);
+  */
+
+  int line = 0;
+  
+#define X(op, a, b) inst_mem[line++] = ASM(op, a, b);
+#include "build/test.lsi"
+#undef X
+  
+  while (INSTR(PC).op) {
+    Op this_op = INSTR(PC).op;
+    
+    #ifdef DEBUG
+    print_instr(INSTR(PC));
+    #endif
+    
+    eval(&cpu, INSTR(PC));
+    if (!(this_op >= JMP && this_op <= JGT)) {
+      // Jumps inkrementerer PC av seg selv :)
+      cpu.r[PC]++;
+    }
+    
+    #ifdef DEBUG
+    print_state(&cpu);
+    read(0, 0, 1); // @MERK - trykk enter for å steppe i kjøringen.
+    #endif
+    
+
+  }
+
+  print_state(&cpu);
+
+  
+  // Brukes for å si hvor stor vår originale skjerm er.
+  SDL_Rect framebuffer_source_dimensions = {
+    .x = 0,
+    .y = 0,
+    .w = DISPLAY_SIZE,
+    .h = DISPLAY_SIZE,
+  };
+    
+
+  for (int i = 0; i < 125; i++) {
+    // Copy texture to render target
+    SDL_UpdateTexture(display, NULL, pixels, DISPLAY_SIZE*sizeof(uint32_t)); // @Merk - ganger her med bredden av skjermen (bytePitch)
+    
+    SDL_SetRenderTarget(renderer, NULL);
+        
+    //Clear screen
+    SDL_RenderClear(renderer);
+    
+    //Render texture to screen
+    SDL_RenderCopy(renderer, display, &framebuffer_source_dimensions, NULL); // NULL viser til at skjermen skal fylles med hvanåenn var i source_rect
+    
+    //Update screen
+    SDL_RenderPresent(renderer);
+  }
+
+  SDL_CloseAudio();
+  SDL_DestroyTexture(display);
+  SDL_DestroyRenderer(renderer);
+  SDL_DestroyWindow(window);
+  SDL_Quit();
+
+
+  // print_state(&cpu);
+
+  
+
+  
+}
