@@ -228,30 +228,6 @@ inline void eval (CPU* cpu, Instr instr) {
   }
 }
 
-static uint8_t  *audio_chunk;
-static uint32_t audio_len;
-static uint8_t  *audio_pos;
-
-/* The audio function callback takes the following parameters:
-   stream:  A pointer to the audio buffer to be filled
-   len:     The length (in bytes) of the audio buffer
-*/
-void fill_audio(void *udata, uint8_t *stream, int len)
-{
-  printf("Schwopp\n!");
-  /* Only play if we have data left */
-  if ( audio_len == 0 )
-    return;
-
-  printf("Bangin!\n");
-  
-  /* Mix as much data as possible */
-  len = ( len > audio_len ? audio_len : len );
-  SDL_MixAudio(stream, audio_pos, len, SDL_MIX_MAXVOLUME);
-  audio_pos += len;
-  audio_len -= len;
-}
-
 
 int main () {
 
@@ -263,8 +239,6 @@ int main () {
   SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
   SDL_Texture  *display  = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 128, 128);
   
-
-
 
   
   // Initialiser CPU og minne
