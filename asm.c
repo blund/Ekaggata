@@ -308,7 +308,7 @@ int main () {
   int line = 0;
   
 #define X(op, a, b) inst_mem[line++] = ASM(op, a, b);
-#include "build/test.lsi"
+#include "build/test.xlasm"
 #undef X
   
   while (INSTR(PC).op) {

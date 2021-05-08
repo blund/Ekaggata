@@ -1,8 +1,8 @@
 
-print(' [ PYTHON KOMPILER ] \nKompilerer "test.ls" til "build/test.lsi"')
+print(' [ PYTHON KOMPILER ] \nKompilerer "test.lasm" til "build/test.xlasm"')
 
-inn = open("test.ls", "r")
-ut  = open("build/test.lsi", "w+")
+inn = open("test.lasm", "r")
+ut  = open("build/test.xlasm", "w+")
 
 lines = inn.readlines()
 
