@@ -1,0 +1,5 @@
+MOV_imm, R7, 120
+DRW, 0, 0
+SUB_imm, R7, 1
+CMP, R7, 0
+JNE, 1, 0

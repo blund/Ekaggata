@@ -36,6 +36,12 @@
 #define ASM(opcode, a, b) (Instr){.op = opcode, .reg_to = a, .reg_from = b}
 
 
+SDL_Renderer *renderer;
+SDL_Texture  *display;
+  
+
+int frames_drawn = 0;
+
 // https://en.wikipedia.org/wiki/X_Macro
 const char* register_names[] = {
 #define X(name) [name] = #name,
@@ -68,7 +74,6 @@ void print_state (CPU* cpu) {
     printf("R%i = 0x%x (%i)\n", i, cpu->r[i], cpu->r[i]);
   }
   printf("PC = 0x%x (%i)\n", cpu->r[PC],  cpu->r[PC]);
-  
   printf("\n");
 }
 
@@ -158,6 +163,14 @@ inline void eval (CPU* cpu, Instr instr) {
     }
     break;
 
+  case JNE:
+    if (!(cpu->flags & Z)) {
+      cpu->r[PC] = instr.reg_to;
+    } else {
+      cpu->r[PC]++;
+    }
+    break;
+
   case JGT:
     if (!(cpu->flags & Z) && (!!(cpu->flags & N) == !!(cpu->flags & V))) {
       cpu->r[PC] = instr.reg_to;
@@ -191,10 +204,12 @@ inline void eval (CPU* cpu, Instr instr) {
       cpu->flags |= diff < 0           ? N : 0;
       cpu->flags |= unsigned_overflow  ? C : 0; 
       cpu->flags |= signed_overflow    ? V : 0;
-      
+
+#ifdef DEBUG
       printf("eq: %i\n", (cpu->flags & Z));
       printf("gt: %i\n", !(cpu->flags & Z) && (cpu->flags & N) == (cpu->flags & V));
       printf("lt: %i\n", (cpu->flags & N) != (cpu->flags & V));
+      #endif
     }
     break;
     
@@ -221,6 +236,32 @@ inline void eval (CPU* cpu, Instr instr) {
       #endif
     }
     break;
+
+  case DRW:
+    // Copy texture to render target
+    SDL_UpdateTexture(display, NULL, cpu->framebuffer, DISPLAY_SIZE*sizeof(uint32_t)); // @Merk - ganger her med bredden av skjermen (bytePitch)
+    
+    SDL_SetRenderTarget(renderer, NULL);
+        
+    //Clear screen
+    SDL_RenderClear(renderer);
+
+
+    SDL_Rect framebuffer_source_dimensions = {
+      .x = 0,
+      .y = 0,
+      .w = DISPLAY_SIZE,
+      .h = DISPLAY_SIZE,
+    };
+    
+    //Render texture to screen
+    SDL_RenderCopy(renderer, display, &framebuffer_source_dimensions, NULL); // NULL viser til at skjermen skal fylles med hvanåenn var i source_rect
+    
+    //Update screen
+    SDL_RenderPresent(renderer);
+
+    frames_drawn++;
+    break;
     
   default:
     printf("FEIL I KJØRING! Fikk ukjent opcode %i. Forsøker du å kjøre vilkårlig data?\n", instr.op);
@@ -232,12 +273,12 @@ inline void eval (CPU* cpu, Instr instr) {
 int main () {
 
   SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO);
-  SDL_Window * window = SDL_CreateWindow("EKAGGATA",
+  SDL_Window * window    = SDL_CreateWindow("EKAGGATA",
                                          SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                          512, 512, 0);
 
-  SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
-  SDL_Texture  *display  = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 128, 128);
+  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
+  display  = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 128, 128);
   
 
   
@@ -262,7 +303,7 @@ int main () {
   printf("Instr size: %lu bytes\n", sizeof(Instr));
   puts("");
   printf("mem start: %p\n", inst_mem); 
-  puts("\n\n [ STARTER PROGRAM ] \n");
+  puts("\n\n [ KJØRER PROGRAM ] \n");
 
   int line = 0;
   
@@ -290,9 +331,9 @@ int main () {
     
 
   }
-
+#ifdef DEBUG
   print_state(&cpu);
-
+#endif
   
   // Brukes for å si hvor stor vår originale skjerm er.
   SDL_Rect framebuffer_source_dimensions = {
@@ -318,6 +359,8 @@ int main () {
     //Update screen
     SDL_RenderPresent(renderer);
   }
+
+  printf(" Frames tegnet: %i\n", frames_drawn);
 
   SDL_CloseAudio();
   SDL_DestroyTexture(display);

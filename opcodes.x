@@ -14,4 +14,5 @@ X(JNE,     JMP, IMM) \
 X(JLT,     JMP, IMM) \
 X(JGT,     JMP, IMM) \
 X(CMP,     CMP, REG) \
-X(CMP_imm, CMP, IMM)
+X(CMP_imm, CMP, IMM) \
+X(DRW,     DRW, NON)
