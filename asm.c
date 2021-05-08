@@ -265,51 +265,6 @@ int main () {
   
 
 
-  // Sett opp lyd-greier
-  SDL_AudioSpec wanted;
-  wanted.freq = 22050;
-  wanted.format = AUDIO_S16;
-  wanted.channels = 2;   
-  wanted.samples  = 1024;
-  wanted.callback = fill_audio;
-  wanted.userdata = NULL;
-  SDL_AudioDeviceID device;
-  
-  if ( (device = SDL_OpenAudio(&wanted, NULL)) < 0 ) {
-    fprintf(stderr, "Couldn't open audio: %s\n", SDL_GetError());
-    return(-1);
-  }
-  //return(0);
-
- 
-
-  audio_chunk = (uint8_t*)malloc(2048*sizeof(uint8_t));
-  audio_len = 2048;
-  audio_pos = audio_chunk;
-  
-  for (int i = 0; i < 2048; i++) {
-    audio_chunk[i] = rand();
-  }
-
-
-  
-  SDL_PauseAudioDevice(device, 0);
-
-  /*
-  puts("2");
-  
-
-  //while ( audio_len > 0 ) {
-  //  SDL_Delay(100);     
-  //}
-
-  puts("3");
-  
-  printf("Juhu!\n");
-  SDL_CloseAudio();
-  */
-
-
 
   
   // Initialiser CPU og minne
@@ -334,29 +289,6 @@ int main () {
   puts("");
   printf("mem start: %p\n", inst_mem); 
   puts("\n\n [ STARTER PROGRAM ] \n");
-
-  /*
-  inst_mem[0] = ASM(MOV_imm, R0, 10);
-  inst_mem[1] = ASM(MOV_imm, R1, 3);
-  inst_mem[2] = ASM(CMP,     R0, R1);
-  inst_mem[3] = ASM(JGT,     5,  R1);
-  inst_mem[4] = ASM(MOV_imm, R7, 100);
-  inst_mem[5] = ASM(MOV_imm, R1, 69);
-  inst_mem[6] = ASM(MOV_imm, R0, 0xDEADBEEF);
-  */
-  /*
-  // Assembly-kode som skal kjøres
-  inst_mem[0] = ASM(MOV_imm, R7, 16384); // Hvor mange piksler vi vil tegne
-  inst_mem[1] = ASM(MOV_imm, R0, FRAMEBUFFER_OFFSET);
-  inst_mem[2] = ASM(MOV_imm, R1, 0xde000000);  // Farge som skal tegnes
-  inst_mem[3] = ASM(STR_adr, R1, R0);          // [R0] <- R1
-  inst_mem[4] = ASM(ADD_imm, R0, 0x4);         // Inkrementer til neste piksel (altså 4 byte, RGBA - 8888)
-  inst_mem[5] = ASM(ADD_imm, R1, 0x200);       // "Inkrementer" fargeverdien for gradienten.
-  inst_mem[6] = ASM(SUB_imm, R7, 1);
-  inst_mem[7] = ASM(CMP_imm, R7, 0); // Sjekk om vi har tegnet alle pixlene
-  inst_mem[8] = ASM(JEQ,     100, 0);
-  inst_mem[9] = ASM(JMP_imm, 3,  0);
-  */
 
   int line = 0;
   
