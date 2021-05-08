@@ -11,7 +11,7 @@ I am also building up a little ISA to learn more about computer architecture. Th
 The ```*.x``` files use a concept called [X macros](https://en.wikipedia.org/wiki/X_Macro). It is a terrifying hack, but also very convenient for storing related data together in C.
 
 ## How to run
-Ekagatta depends on SDL2 for graphics display, and the build file only runs on Linux. Instructions for running on Windows and MacOS will be added.
+Ekagatta depends on SDL2 for graphics display and Python for some file translation. The build file only runs on Linux.
 
 So to compile and execute, simply run
 ```./compile``` 
@@ -25,6 +25,6 @@ Things that are missing but I plan on adding:
   * Audio IO
   * Keyboard IO
   * Networking IO
-  * An actual assembler
+  * An actual assembler to get rid of Python as a dependency
   * Definitions of memory mappings
   * And probably more!
