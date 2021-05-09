@@ -12,10 +12,10 @@ ADD_imm,  R0,  0x4    // Inkrementer hvilken piksel vi skriver til
 ADD_imm,  R1,  0x200  // Inkrementer fargen
 SUB_imm,  R6,  1      // Reduser gjenværende piksler
 CMP_imm,  R6,  0      // Sjekk om vi har skrevet alle piksler
-JNE,      draw_pixel, 0          
+JNE,      draw_pixel
 
 DRW,      0,   0
 SUB_imm,  R7,  1
 CMP_imm,  R7,  0
 ADD_imm,  R5,  0x1000000
-JNE,      draw_screen, 0
+JNE,      draw_screen
