@@ -1,7 +1,7 @@
 # Ekaggata
 A small virtual computer
 
-
+![Oops! Failed to load gif!](http://blund.site/ekaggata.gif)
 ## What is this
 
 Ekaggata is an attempt to create a virtual computer that works sort of like an embedded system, where hardware IO is accessible through registers on the machine. 
