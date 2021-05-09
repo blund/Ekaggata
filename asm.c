@@ -35,10 +35,8 @@
 #define INSTR(PC) inst_mem[cpu.r[PC]]
 #define ASM(opcode, a, b) (Instr){.op = opcode, .reg_to = a, .reg_from = b}
 
-
 SDL_Renderer *renderer;
 SDL_Texture  *display;
-  
 
 int frames_drawn = 0;
 
@@ -79,12 +77,10 @@ void print_state (CPU* cpu) {
 
 
 void print_instr (Instr instr) {
-
   if (!opcode_types[instr.op]) {
     printf(" -> NOP\n");
     return;
   }
-
   
   if ((opcodes[instr.op] >= JMP) && (opcodes[instr.op] <= JGT)) {
     printf(" -> JMP %i\n", instr.reg_to);
@@ -273,10 +269,10 @@ inline void eval (CPU* cpu, Instr instr) {
 int main () {
 
   SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO);
-  SDL_Window * window    = SDL_CreateWindow("EKAGGATA",
+  SDL_Window * window = SDL_CreateWindow("EKAGGATA",
                                          SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                          512, 512, 0);
-
+  
   renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
   display  = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 128, 128);
   
@@ -334,35 +330,9 @@ int main () {
 #ifdef DEBUG
   print_state(&cpu);
 #endif
-  
-  // Brukes for å si hvor stor vår originale skjerm er.
-  SDL_Rect framebuffer_source_dimensions = {
-    .x = 0,
-    .y = 0,
-    .w = DISPLAY_SIZE,
-    .h = DISPLAY_SIZE,
-  };
-    
-
-  for (int i = 0; i < 125; i++) {
-    // Copy texture to render target
-    SDL_UpdateTexture(display, NULL, pixels, DISPLAY_SIZE*sizeof(uint32_t)); // @Merk - ganger her med bredden av skjermen (bytePitch)
-    
-    SDL_SetRenderTarget(renderer, NULL);
-        
-    //Clear screen
-    SDL_RenderClear(renderer);
-    
-    //Render texture to screen
-    SDL_RenderCopy(renderer, display, &framebuffer_source_dimensions, NULL); // NULL viser til at skjermen skal fylles med hvanåenn var i source_rect
-    
-    //Update screen
-    SDL_RenderPresent(renderer);
-  }
 
   printf(" Frames tegnet: %i\n", frames_drawn);
 
-  SDL_CloseAudio();
   SDL_DestroyTexture(display);
   SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);
