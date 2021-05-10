@@ -22,7 +22,7 @@ while(i < end):
 
     if(has_colon != -1):
         label = lines[i][:-2]
-        labels[label] = i+1 # Legg til i labels (vil peke på neste linje), fjern semikolon
+        labels[label] = i # Legg til i labels (vil peke på neste linje), fjern semikolon
         lines = lines[:i] + lines[i+1:]
         # print("BOM!")
         end = len(lines)

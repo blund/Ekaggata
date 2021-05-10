@@ -1,6 +1,5 @@
-
-MOV_imm,  R7,  240         // Hvor mange frames vi vil ha
-MOV_imm,  R6,  0xff           // Fargen vi vil te
+MOV_imm,  R7,  240   // Hvor mange frames vi vil ha
+MOV_imm,  R6,  0xff  // Fargen vi vil te
 
 new_screen:
 MOV_imm,  R0,  FRAMEBUFFER_OFFSET // Hvor vi begynner å tegne en frame
