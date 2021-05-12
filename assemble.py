@@ -11,9 +11,10 @@ labels = {} # Hash-table for labels i koden
 end = len(lines)
 i = 0
 while(i < end):
-
+    lines[i] = lines[i][:lines[i].find("//")] + "\n"
+    lines[i] = lines[i].strip()
     # Rydd bort tomme linjer
-    if lines[i] == '\n':
+    if lines[i] == '\n' or lines[i] == '':
         lines = lines[:i] + lines[i+1:]
         end = len(lines)
         continue
@@ -21,7 +22,7 @@ while(i < end):
     has_colon = lines[i].find(":")
 
     if(has_colon != -1):
-        label = lines[i][:-2]
+        label = lines[i][:-1]
         labels[label] = i # Legg til i labels (vil peke på neste linje), fjern semikolon
         lines = lines[:i] + lines[i+1:]
         # print("BOM!")
@@ -29,7 +30,7 @@ while(i < end):
         continue
 
     # Fjern kommentarer og newlines
-    lines[i] = lines[i][:lines[i].find("//")] + " "
+
     lines[i].replace('\n', '')
        
     i+=1
@@ -45,7 +46,7 @@ while(i < end):
     if lines[i][0] == 'J':
         for keys, val in labels.items():
             lines[i] = lines[i].replace(keys, str(val))
-        lines[i] += ", 0"
+        lines[i] += ", 0\n"
 
 
     lines[i] = lines[i].strip()
@@ -58,7 +59,12 @@ while(i < end):
     i+=1
 
 
+
+
 # Og til slutt outputter vi greier..
-for line in lines:
-    print(line, end='')
+for i, line in enumerate(lines):
+    print(str(i) + ": " +line, end='')
     ut.write(line)
+
+
+print(labels)
