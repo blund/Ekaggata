@@ -26,7 +26,7 @@
 
 
 
-#define STORAGE_OFFSET     1024
+#define STORAGE_OFFSET     8192
 #define FRAMEBUFFER_OFFSET 4096
 
 #define DISPLAY_SIZE 128
@@ -68,7 +68,7 @@ const Op opcodes[] = {
 
 
 void print_state (CPU* cpu) {
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 15; i++) {
     printf("R%i = 0x%x (%i)\n", i, cpu->r[i], cpu->r[i]);
   }
   printf("PC = 0x%x (%i)\n", cpu->r[PC],  cpu->r[PC]);
@@ -134,6 +134,23 @@ inline void eval (CPU* cpu, Instr instr) {
   case SUB_imm:
     cpu->r[instr.reg_to] -= instr.imm;
     break;
+
+  case MUL:
+    cpu->r[instr.reg_to] *= cpu->r[instr.reg_from];
+    break;
+
+  case MUL_imm:
+    cpu->r[instr.reg_to] *= instr.imm;
+    break;
+
+  case DIV:
+    cpu->r[instr.reg_to] /= cpu->r[instr.reg_from];
+    break;
+
+  case DIV_imm:
+    cpu->r[instr.reg_to] /= instr.imm;
+    break;
+
     
   case LDR_adr:
     cpu->r[instr.reg_to] = *(s32 *)(cpu->memory + cpu->r[instr.reg_from]);
@@ -299,7 +316,7 @@ int main () {
   printf("Instr size: %lu bytes\n", sizeof(Instr));
   puts("");
   printf("mem start: %p\n", inst_mem); 
-  puts("\n\n [ KJØRER PROGRAM ] \n");
+  puts("\n\n [ STARTER PROGRAM ] \n");
 
   int line = 0;
   

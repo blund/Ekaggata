@@ -52,7 +52,7 @@ typedef struct Instr {
 
 
 typedef struct CPU {
-  u32 r[16]; // @MERK! - 16 registre allokert, men vi bruker kun 9 (8 + PC)
+  u32 r[32]; // @MERK! - 16 registre allokert, men vi bruker kun 17 (16 + PC)
 
   u8 flags;
   
