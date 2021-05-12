@@ -3,16 +3,20 @@ X(MOV,     MOV, REG) \
 X(MOV_imm, MOV, IMM) \
 X(ADD,     ADD, REG) \
 X(ADD_imm, ADD, IMM) \
-X(SUB,     ADD, REG) \
-X(SUB_imm, ADD, IMM) \
+X(SUB,     SUB, REG) \
+X(SUB_imm, SUB, IMM) \
+X(MUL,     MUL, REG) \
+X(MUL_imm, MUL, IMM) \
+X(DIV,     DIV, REG) \
+X(DIV_imm, DIV, IMM) \
 X(STR_adr, STR, ADR) \
 X(LDR_adr, LDR, ADR) \
 X(JMP,     JMP, ADR) \
 X(JMP_imm, JMP, IMM) \
-X(JEQ,     JMP, IMM) \
-X(JNE,     JMP, IMM) \
-X(JLT,     JMP, IMM) \
-X(JGT,     JMP, IMM) \
+X(JEQ,     JEQ, IMM) \
+X(JNE,     JNE, IMM) \
+X(JLT,     JLT, IMM) \
+X(JGT,     JGT, IMM) \
 X(CMP,     CMP, REG) \
 X(CMP_imm, CMP, IMM) \
 X(DRW,     DRW, NON)
