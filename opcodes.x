@@ -16,7 +16,9 @@ X(JMP_imm, JMP, IMM) \
 X(JEQ,     JEQ, IMM) \
 X(JNE,     JNE, IMM) \
 X(JLT,     JLT, IMM) \
+X(JLE,     JLT, IMM) \
 X(JGT,     JGT, IMM) \
+X(JGE,     JGE, IMM) \
 X(CMP,     CMP, REG) \
 X(CMP_imm, CMP, IMM) \
 X(DRW,     DRW, NON)

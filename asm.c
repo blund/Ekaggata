@@ -192,6 +192,14 @@ inline void eval (CPU* cpu, Instr instr) {
     }
     break;
     
+  case JGE:
+    if (!!(cpu->flags & N) == !!(cpu->flags & V)) {
+      cpu->r[PC] = instr.reg_to;
+    } else {
+      cpu->r[PC]++;
+    }
+    break; 
+
   case JLT:
     if ((cpu->flags & N) != (cpu->flags & V)) {
       cpu->r[PC] = instr.reg_to;
@@ -199,7 +207,15 @@ inline void eval (CPU* cpu, Instr instr) {
       cpu->r[PC]++;
     }
     break;
-      
+
+  case JLE:
+    if ((cpu->flags & Z) || (!!(cpu->flags & N) != !!(cpu->flags & V))) {
+      cpu->r[PC] = instr.reg_to;
+    } else {
+      cpu->r[PC]++;
+    }
+    break;
+          
     
   case CMP:
     {
@@ -220,6 +236,7 @@ inline void eval (CPU* cpu, Instr instr) {
 #ifdef DEBUG
       printf("flags: %x\n", cpu->flags);
       printf("eq: %i\n", (cpu->flags & Z));
+      printf("ge: %i\n", !!(cpu->flags & N) == !!(cpu->flags & V));
       printf("gt: %i\n", !(cpu->flags & Z) && (cpu->flags & N) == (cpu->flags & V));
       printf("lt: %i\n", (cpu->flags & N) != (cpu->flags & V));
       #endif
@@ -245,6 +262,7 @@ inline void eval (CPU* cpu, Instr instr) {
       #ifdef DEBUG
       printf("flags: %x\n", cpu->flags);
       printf("eq: %i\n", (cpu->flags & Z));
+      printf("ge: %i\n", !!(cpu->flags & N) == !!(cpu->flags & V));
       printf("gt: %i\n", !(cpu->flags & Z) && (cpu->flags & N) == (cpu->flags & V));
       printf("lt: %i\n", (cpu->flags & N) != (cpu->flags & V));
       #endif
