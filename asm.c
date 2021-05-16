@@ -205,7 +205,6 @@ inline void eval (CPU* cpu, Instr instr) {
     {
       // Om hvordan man lager LT, GT osv... fra NZCV
       // https://community.arm.com/developer/ip-products/processors/b/processors-ip-blog/posts/condition-codes-1-condition-flags-and-codes
-c hex to binary
       
       s32 diff              =  cpu->r[instr.reg_to] - cpu->r[instr.reg_from];
       u32 unsigned_overflow = (cpu->r[instr.reg_to] + cpu->r[instr.reg_from]) < cpu->r[instr.reg_to];
