@@ -199,17 +199,17 @@ inline void eval (CPU* cpu, Instr instr) {
       cpu->r[PC]++;
     }
     break;
-        
+      
     
   case CMP:
     {
       // Om hvordan man lager LT, GT osv... fra NZCV
       // https://community.arm.com/developer/ip-products/processors/b/processors-ip-blog/posts/condition-codes-1-condition-flags-and-codes
-
+c hex to binary
       
-      s32 diff              = cpu->r[instr.reg_to] - cpu->r[instr.reg_from];
+      s32 diff              =  cpu->r[instr.reg_to] - cpu->r[instr.reg_from];
       u32 unsigned_overflow = (cpu->r[instr.reg_to] + cpu->r[instr.reg_from]) < cpu->r[instr.reg_to];
-      s32 signed_overflow   = (cpu->r[instr.reg_to] > 0 && cpu->r[instr.reg_from]) > INT_MAX - cpu->r[instr.reg_from];
+      u32 signed_overflow   = (cpu->r[instr.reg_to] < 0) && (cpu->r[instr.reg_from] > (INT_MAX - cpu->r[instr.reg_from]));
 
       cpu->flags = 0;
       
@@ -219,6 +219,7 @@ inline void eval (CPU* cpu, Instr instr) {
       cpu->flags |= signed_overflow    ? V : 0;
 
 #ifdef DEBUG
+      printf("flags: %x\n", cpu->flags);
       printf("eq: %i\n", (cpu->flags & Z));
       printf("gt: %i\n", !(cpu->flags & Z) && (cpu->flags & N) == (cpu->flags & V));
       printf("lt: %i\n", (cpu->flags & N) != (cpu->flags & V));
@@ -233,7 +234,7 @@ inline void eval (CPU* cpu, Instr instr) {
       
       s32 diff              =  cpu->r[instr.reg_to] - instr.imm;
       u32 unsigned_overflow = (cpu->r[instr.reg_to] + instr.imm) < cpu->r[instr.reg_to];
-      s32 signed_overflow   = (cpu->r[instr.reg_to] > 0 && instr.imm) > INT_MAX - instr.imm;
+      s32 signed_overflow   = (cpu->r[instr.reg_to] < 0) && (instr.imm > INT_MAX - instr.imm);
 
       cpu->flags = 0;
       
@@ -243,6 +244,7 @@ inline void eval (CPU* cpu, Instr instr) {
       cpu->flags |= signed_overflow    ? V : 0;
 
       #ifdef DEBUG
+      printf("flags: %x\n", cpu->flags);
       printf("eq: %i\n", (cpu->flags & Z));
       printf("gt: %i\n", !(cpu->flags & Z) && (cpu->flags & N) == (cpu->flags & V));
       printf("lt: %i\n", (cpu->flags & N) != (cpu->flags & V));
@@ -251,6 +253,7 @@ inline void eval (CPU* cpu, Instr instr) {
     break;
 
   case DRW:
+#ifndef DEBUG
     // Copy texture to render target
     SDL_UpdateTexture(display, NULL, cpu->framebuffer, DISPLAY_SIZE*sizeof(uint32_t)); // @Merk - ganger her med bredden av skjermen (bytePitch)
     
@@ -274,6 +277,7 @@ inline void eval (CPU* cpu, Instr instr) {
     SDL_RenderPresent(renderer);
 
     frames_drawn++;
+#endif
     break;
     
   default:
@@ -284,7 +288,7 @@ inline void eval (CPU* cpu, Instr instr) {
 
 
 int main () {
-
+#ifndef DEBUG
   SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO);
   SDL_Window * window = SDL_CreateWindow("EKAGGATA",
                                          SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
@@ -292,7 +296,7 @@ int main () {
   
   renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
   display  = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 128, 128);
-  
+#endif
 
   
   // Initialiser CPU og minne
@@ -349,12 +353,12 @@ int main () {
 #endif
 
   printf(" Frames tegnet: %i\n", frames_drawn);
-
+#ifndef DEBUG
   SDL_DestroyTexture(display);
   SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);
   SDL_Quit();
-
+#endif
 
   // print_state(&cpu);
 
