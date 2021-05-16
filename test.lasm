@@ -1,22 +1,337 @@
 
-MOV_imm,  R7,  240         // Hvor mange frames vi vil ha
-MOV_imm,  R6,  0xff           // Fargen vi vil te
 
-new_screen:
-MOV_imm,  R0,  FRAMEBUFFER_OFFSET // Hvor vi begynner å tegne en frame
-MOV_imm,  R5,  16384              // Hvor mange piksler vi skal tegne
-MOV,      R1,  R6                 // Hent inn første farge som skal tegnes
 
-draw_pixel:
-STR_adr,  R1,  R0
-ADD_imm,  R0,  0x4
-SUB_imm,  R5,  1
-CMP_imm,  R5,  0
-ADD_imm,  R1,  0x200
-JNE,      draw_pixel
+// Skriver våre punkter til minne
+MOV_imm, R1, STORAGE_OFFSET
+MOV_imm, R0, 96
+STR_adr,  R0, R1
 
-DRW,      0,   0
-SUB_imm,  R7,  1
-CMP_imm,  R7,  0
-ADD_imm,  R6,  0x1000000
-JNE,      new_screen
+ADD_imm, R1, 4
+MOV_imm, R0, 100
+STR_adr, R0, R1
+
+ADD_imm, R1, 4
+MOV_imm, R0, 64
+STR_adr, R0, R1
+
+ADD_imm, R1, 4
+MOV_imm, R0, 20
+STR_adr, R0, R1
+
+ADD_imm, R1, 4
+MOV_imm, R0, 16
+STR_adr, R0, R1
+
+ADD_imm, R1, 4
+MOV_imm, R0, 85
+STR_adr, R0, R1
+
+
+// Les ut y-koordinater
+MOV_imm, R8, STORAGE_OFFSET
+LDR_adr, R0, R8  // x1
+ADD_imm, R8, 4
+LDR_adr, R1, R8  // y1
+ADD_imm, R8, 4
+LDR_adr, R2, R8  // x2
+ADD_imm, R8, 4 
+LDR_adr, R3, R8  // y2
+ADD_imm, R8, 4
+LDR_adr, R4, R8  // x3
+ADD_imm, R8, 4
+LDR_adr, R5, R8  // y3
+
+
+
+//
+// Her begynner sortering av våre tre punkter.
+//
+// Algoritme: 1. sammenlign og bytt 1. og 2.
+//            2. sammenlign og bytt 1. og 3.
+//            3. sammenlign og bytt 2. og 3.
+//
+// @TODO: sorter på X om Y er lik, med den 'mest til venstre' først (altså minst x)
+//
+
+// Sammenlign y for p1 og p2, og bytt plass hvis p1 har større y
+CMP, R1, R3    
+JLT, compare_first_and_third // bytt plass når p1 har høyere y enn p2
+
+// Om vi ikke hopper, så bytter vi p1 og p2
+MOV, R6, R0  // lagre verdiene for p1
+MOV, R7, R1  //
+MOV, R0, R2  // flytt verdiene for p2 til p1
+MOV, R1, R3  //
+MOV, R2, R6  // flytt lagrede verdier for p1 til p2's gamle plass
+MOV, R3, R7  //
+
+compare_first_and_third:
+CMP, R1, R5
+JLT, compare_second_and_third    // bytt plass om p1 har høyere y enn p3
+
+// Om vi ikke hopper, bytter vi p1 og p3
+MOV, R6, R0  // lagre verdiene for p1
+MOV, R7, R1  //
+MOV, R0, R4  // flytt verdiene for p3 til p1
+MOV, R1, R5  //
+MOV, R4, R6  // flytt lagrede verdier for p1 til p3's gamle plass
+MOV, R5, R7  //
+
+compare_second_and_third:
+CMP, R3, R5
+JLT, compare_and_swap_complete
+
+// Om vi ikke hopper, bytter vi p1 og p3
+MOV, R6, R2  // lagre verdiene for p2
+MOV, R7, R3  //
+MOV, R2, R4  // flytt verdiene for p3 til p2
+MOV, R3, R5  //
+MOV, R4, R6  // flytt lagrede verdier for p1 til p3's gamle plass
+MOV, R5, R7  //
+
+compare_and_swap_complete:
+// Her har vi avsluttet sammenligning. Punktene er nå sortert etter y-verdi, fra lavest til høyest i r0 til r5!
+
+
+// Nå som vi har sortert, vil vi lagre y-verdien for 'knekken' og for slutt-punktet.
+
+MOV, R14, R3
+MOV, R15, R5
+
+
+// Avgjør om "short side" er på høyre eller venstre side med kryssprodukt
+// shortside = (y2 - y1) * (x3 - x1) < (x2 - x1) * (y3 - y1)
+//                 a           b            c          d 
+
+
+MOV, R8, R3  //  
+SUB, R8, R1  // a i R8
+MOV, R9, R4  //
+SUB, R9, R8  // b i R9
+MUL, R8, R9   // a * b i R8
+
+MOV, R9,  R2   // 
+SUB, R9,  R0   // c i R9
+MOV, R10, R5   //
+SUB, R10, R1   // d I R10
+MUL, R9,  R10  // c * d i R9
+
+CMP, R8, R9 // Avgjør hvilken side som er kort. LT => høyre (R8 < R9, false => short on left)
+
+// Lagrer først hvor vi lagrer de ulike objektene for å interopolere
+MOV_imm, R8,  STORAGE_OFFSET + 128       // lange sides' addresse i R8
+MOV_imm, R9,  STORAGE_OFFSET + 128 + 16  // korte sides 1 sin addresse i R8
+MOV_imm, R10,  STORAGE_OFFSET + 128 + 32  // korte sides 1 sin addresse i R8
+
+// For tegning under vil vi bruke R11 og R12 (for nå), med
+// R11 = start og R12 = slutt for tegning av linje
+// DVS. er kort side til venstre skal R11 byttes en gang og R12 konstant, og vise verca.
+
+// R11: venstre, R12: høyre, R13: kort til høyre? (1 hvis ja)
+
+JLT, short_on_right_side // Om den korte siden er til venstre, hopp over snutten under
+MOV,     R12, R8  // Her er korte side til venstre, så vi lagrer lange side til høyre (R12, konstant) og korte til venstre (R11).
+MOV,     R11, R9 
+MOV_imm, R13, 0   // Lagre at korte er til venstre (ved å lagre at sammenligningen (R8 < R9) var usann
+JMP,     short_side_decided
+
+short_on_right_side:
+MOV,     R11, R8  // Her er korte side til høyre, så vi lagrer lange side til venstre (R11, konstant) og korte til høyre (R12).
+MOV,     R12, R9 
+MOV_imm, R13, 1   // Lagre at korte er til høyre (ved å lagre at sammenligningen (R8 < R9) var usann
+
+
+short_side_decided:
+// Lagrer slopes i STORAGE-OFFSET + 128 fordi hvorfor ikke
+// De lagres i formatet {y1, dx, dy, x1}, altså med størrelse 16 byte.
+
+// Først lagrer vi verdiene for den lange siden (p3 - p1)
+// Objektet er lagret i addressen lagret i R8.
+MOV, R7, R8 // adresse for .y1
+MOV, R6, R1      // .y1 i R0
+STR_adr, R6, R7  // lagre y1 til .y1
+
+ADD_imm, R7, 4   // inkrementer til .dx
+MOV, R6, R4 // dx i R6
+SUB, R6, R0 //
+STR_adr, R6, R7 // lagre dx til .dx
+
+ADD_imm, R7, 4   // inkrementer til .dy 
+MOV, R6, R5      // 
+SUB, R6, R1      // dy i R0
+STR_adr, R6, R7  // lagre dy til .dy
+
+ADD_imm, R7, 4   // inkrementer til .x1 
+MOV, R6, R0      // .x1 i R0
+STR_adr, R6, R7  // lagre x1 til .x1
+
+ 
+
+// Så lagrer vi verdiene for den den ene korte siden (p2 - p1)
+// Objektet er lagret i addressen lagret i R8.
+MOV, R7, R9      // adresse for .y1
+MOV, R6, R1      // .y1 i R0
+STR_adr, R6, R7  // lagre y1 til .y1
+
+ADD_imm, R7, 4   // inkrementer til .dx
+MOV, R6, R2      // dx i R6
+SUB, R6, R0      //
+STR_adr, R6, R7  // lagre dx til .dx
+
+ADD_imm, R7, 4   // inkrementer til .dy 
+MOV, R6, R3      // dy i R0
+SUB, R6, R1      //
+STR_adr, R6, R7  // lagre dy til .dy
+
+ADD_imm, R7, 4   // inkrementer til .x1 
+MOV, R6, R0      // .x1 i R0
+STR_adr, R6, R7  // lagre x1 til .x1
+
+
+// Til slutt lagrer vi verdiene for den den andre korte siden (p3 - p2)
+// Objektet er lagret i addressen lagret i R8.
+MOV, R7, R10 // adresse for .y1
+MOV, R6, R3      // .y1 i R0
+STR_adr, R6, R7  // lagre y1 til .y1
+
+ADD_imm, R7, 4   // inkrementer til .dx
+MOV, R6, R4 // dx i R6
+SUB, R6, R2 //
+STR_adr, R6, R7 // lagre dx til .dx
+
+ADD_imm, R7, 4   // inkrementer til .dy 
+MOV, R6, R5      // 
+SUB, R6, R3      // dy i R0
+STR_adr, R6, R7  // lagre dy til .dy
+
+ADD_imm, R7, 4   // inkrementer til .x1 
+MOV, R6, R2      // .x1 i R0
+STR_adr, R6, R7  // lagre x1 til .x1
+
+
+// Her går vi ut fra at R8-R10 inneholder adressen til dataen som brukes for å beregne linjesegmentene.
+// Slik som ting er NÅ er register R11 det til venstre, og R12 det til høyre. R8 til R10 holder addressene til linje-objektene.
+
+// Tror også her at R7 -> R10 er ledige? siden R11, R12, og R13 holder dataen vi bruker her.
+
+
+
+// Nå nå vil vi flytte y-verdien fra over til en ny trygg plass...
+MOV, R7, R14
+MOV, R8, R15
+MOV, R9, R13  // om korte side er på høyre side eller ikke...
+
+MOV_imm, R6,  FRAMEBUFFER_OFFSET + 128*4*20 // y-offset
+MOV_imm, R13, 20 // start-verdi for y
+MOV_imm, R14,       0x5511ffff
+
+draw_next_line:
+
+CMP, R13, R7 // sjekk om vår y == y2, altså knekkpunktet
+JEQ, next_short
+
+JMP, dont_change_lines
+
+next_short:
+CMP_imm, R9, 1
+JEQ, right_is_short
+
+MOV, R11, R10
+// ADD_imm, R11, 0  // se på neste linje-objekt fra den til vesntre
+JMP, short_incremented
+
+right_is_short:
+ADD_imm, R12, 16
+
+short_incremented:
+dont_change_lines:
+
+MOV,     R0, R13  // test-verdi for y-koordinat
+MOV,     R1, R11  // sjekk for venstre side
+MOV,     R14, PC
+ADD_imm, R14, 2
+JMP,     get_x
+
+MOV, R4, R0 // lagre venstre x-verdi
+
+// beregn høyre x-verdi
+MOV,     R0, R13   // test-verdi for y-koordinat
+MOV,     R1, R12   // sjekk for venstre side
+MOV,     R14, PC
+ADD_imm, R14, 2
+JMP,     get_x
+
+MOV, R5, R0 // lagre høyre x-verdi
+
+
+// Modifiser R4 og R5 til å være på addresse-form i stedet for indeks-form
+MUL_imm, R4, 4
+MUL_imm, R5, 4
+ADD, R4, R6
+ADD, R5, R6
+
+draw_next_pixel:
+MOV_imm, R14, 0x5511ffff
+
+CMP, R5, R4
+JLT, finish_draw_line
+STR_adr, R14, R4      // Skriv til piksel
+CMP, R4, R5
+ADD_imm, R4, 4
+JLT, draw_next_pixel
+
+finish_draw_line:
+ADD_imm, R13, 1
+ADD_imm, R6, 128*4
+CMP_imm, R13, 120
+JNE,     draw_next_line
+
+
+
+MOV_imm, R1, 120 // how many frames to draw
+draw_rendered_frame:
+DRW,     0,  0
+SUB_imm, R1, 1
+CMP_imm, R1, 0
+JGT,     draw_rendered_frame
+
+JMP,   10000
+
+
+
+
+
+get_x:
+// tar inn y-koordinat i R0 og addresse til et linje-objekt i R1
+
+// @TODO - endre rekkefølgen i objektet vårt til å stemme-aksess-mønsteret
+
+// x = (x2 - x1)/(y2 - y1)(y - y1) + x1
+//        dx        dy      pos     offset
+// med
+//  [R1+0]  = dx
+//  [R1+4]  = dy
+//  [R1+8]  = x1
+//  [R1+12] = y1
+
+// y1
+// dx
+// dy
+// x1
+
+LDR_adr, R2, R1  // lagre 'y1' i R3
+SUB, R0, R2  // (y-y1)
+
+ADD_imm, R1, 4
+LDR_adr, R2, R1  // lagre 'dx' i R3
+MUL, R0, R2  // (y-y1) * dx
+
+ADD_imm, R1, 4
+LDR_adr, R2, R1  // lagre 'dy' i R3
+DIV, R0, R2  // (y-y1) * dx / dy
+
+ADD_imm, R1, 4
+LDR_adr, R2, R1  // lagre 'x1' i R3
+ADD, R0, R2  // (y-y1) * dx / dy + x1
+
+MOV, PC, R14   // Hopp tilbake til programmet
