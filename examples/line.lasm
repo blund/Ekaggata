@@ -1,0 +1,47 @@
+
+
+
+MOV_imm,  R15,  240         // Hvor mange frames vi vil ha
+MOV_imm,  R14,  0x5511ffff           // Fargen vi vil te
+MOV_imm,  R13,  FRAMEBUFFER_OFFSET // Hvor vi begynner å tegne en frame
+MOV,      R12,  R14                 // Hent inn første farge som skal tegnes
+
+
+
+MOV_imm,     R10, 64
+MOV_imm,     R11, 20
+
+
+
+MOV_imm, R9, 64 // Her lagrer vi "nåværende" indeks i linjen
+
+
+
+new_frame:
+MOV,     R8, R9  // Her regner vi ut Y-koordinat (i R8) fra X-koordinat (i R9)
+SUB_imm, R8, 64  // (x - 64)
+MUL_imm, R8, 50  // (y_2 - y_1)
+DIV_imm, R8, 32  // (x_2 - x_1)
+ADD_imm, R8, 20
+
+
+MOV,      R0, R8    // Konverter Y-koordinat til addresse-komponent
+MUL_imm,  R0, 4     // Hver int er 4 bytes
+MUL_imm,  R0, 128   // Hver linje er 128 linjer
+
+
+MOV,  R1, R9        // Legg til X-koordinat
+MUL_imm,  R1, 4     // Hver er 4 bytes
+ADD,      R0, R1    
+
+ADD,      R0, R13   // Legg til framebuffer-offset
+STR_adr,  R14,  R0  // Skriv til piksel
+
+
+ADD_imm, R9, 1 // Inkementer x-verdien som brukes for å regne ut y-verdi
+
+
+DRW,      0,   0
+SUB_imm,  R15,  1
+CMP_imm,  R15,  0
+JNE,      new_frame
