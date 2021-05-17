@@ -26,8 +26,8 @@
 
 
 
-#define STORAGE_OFFSET     8192
-#define FRAMEBUFFER_OFFSET 4096
+#define STORAGE_OFFSET     4096
+#define FRAMEBUFFER_OFFSET 8192
 
 #define DISPLAY_SIZE 128
   
@@ -151,7 +151,6 @@ inline void eval (CPU* cpu, Instr instr) {
     cpu->r[instr.reg_to] /= instr.imm;
     break;
 
-    
   case LDR_adr:
     cpu->r[instr.reg_to] = *(s32 *)(cpu->memory + cpu->r[instr.reg_from]);
     break;
@@ -294,6 +293,7 @@ inline void eval (CPU* cpu, Instr instr) {
     SDL_RenderPresent(renderer);
 
     frames_drawn++;
+    usleep(33);
 #endif
     break;
     
@@ -311,7 +311,7 @@ int main () {
                                          SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                          512, 512, 0);
   
-  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
+  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED /*|SDL_RENDERER_PRESENTVSYNC*/);
   display  = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 128, 128);
 #endif
 
@@ -344,20 +344,20 @@ int main () {
 #define X(op, a, b) inst_mem[line++] = ASM(op, a, b);
 #include "build/test.xlasm"
 #undef X
-  
+
   while (INSTR(PC).op) {
     Op this_op = INSTR(PC).op;
     
     #ifdef DEBUG
     print_instr(INSTR(PC));
     #endif
-    
+ 
     eval(&cpu, INSTR(PC));
-    if (!(this_op >= JMP && this_op <= JGT)) {
+    if (!(this_op >= JMP && this_op <= JGE)) {
       // Jumps inkrementerer PC av seg selv :)
       cpu.r[PC]++;
     }
-    
+
     #ifdef DEBUG
     print_state(&cpu);
     read(0, 0, 1); // @MERK - trykk enter for å steppe i kjøringen.
