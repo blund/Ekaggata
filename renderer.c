@@ -1,8 +1,8 @@
-#include "asm.h"
-#include "renderer.h"
-
 #define  SDL_DISABLE_IMMINTRIN_H 1
 #include <SDL2/SDL.h>
+
+#include "asm.h"
+#include "renderer.h"
 
 
 void setup_graphics (Render_Context *context, int width, int height, int emulated_width, int emulated_height) {
