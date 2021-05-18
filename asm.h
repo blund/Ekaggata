@@ -3,20 +3,16 @@
 
 #include "base.h"
 
-
 #define N (1 << 0) // Negativ
 #define Z (1 << 1) // Null
 #define C (1 << 2) // Carry
 #define V (1 << 3) // Overflow
-
 
 typedef enum Reg {
 #define X(name) name,
 #include "registers.x"
 #undef X
 } Reg;
-
-
 
 typedef enum Op {
 #define X(opcode, name, type) opcode,
@@ -30,7 +26,6 @@ typedef enum Opcode_Type {
   IMM,
   ADR,
 } Opcode_Type;
-
 
 typedef struct Instr {
   Op op;

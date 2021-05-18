@@ -1,4 +1,3 @@
-#include <stdint.h>
 #include <stdio.h>
 #include <malloc.h>
 #include <stdlib.h>
@@ -24,18 +23,17 @@
 // https://everything2.com/title/modifying+IP%252FPC+instead+of+using+%2522JMP%2522
 
 
-
 #define STORAGE_OFFSET     4096
 #define FRAMEBUFFER_OFFSET 8192
 
 #define DISPLAY_SIZE 128
-  
+#define WINDOW_SIZE  512  
 
 #define INSTR(PC) inst_mem[cpu.r[PC]]
 #define ASM(opcode, a, b) (Instr){.op = opcode, .reg_to = a, .reg_from = b}
 
-Render_Context context;
-int frames_drawn = 0;
+Render_Context context      = {}; // kontekst for tegning
+int            frames_drawn = 0;
 
 // https://en.wikipedia.org/wiki/X_Macro
 const char* register_names[] = {
@@ -267,6 +265,7 @@ inline void eval (CPU* cpu, Instr instr) {
 
   case DRW:
     render(&context, cpu);
+    frames_drawn++;
     break;
     
   default:
@@ -277,9 +276,7 @@ inline void eval (CPU* cpu, Instr instr) {
 
 
 int main () {
-
-
-  setup_graphics(&context, 512, 512, 128, 128);
+  setup_graphics(&context, WINDOW_SIZE, WINDOW_SIZE, DISPLAY_SIZE, DISPLAY_SIZE);
   
   // Initialiser CPU og minne
   CPU cpu = {};
@@ -289,13 +286,8 @@ int main () {
   cpu.framebuffer = cpu.memory + FRAMEBUFFER_OFFSET; // med assembly (enda?)
 
 
-  Instr* inst_mem = cpu.memory; // Bare et 'alias' for minnet hvor instruksjoner ligger.
-  // Brukes bare i main.
-
-
-
-  // Piksel-test
-  unsigned int* pixels = (unsigned int*)cpu.framebuffer;
+  Instr*        inst_mem = cpu.memory; // Bare et 'alias' for minnet hvor instruksjoner ligger.
+  unsigned int* pixels   = (unsigned int*)cpu.framebuffer; // Sier hvor renderer skal hente sine piksler :)
   
 
   puts("\n\n [ INFO ] \n");
@@ -335,12 +327,9 @@ int main () {
 #endif
 
   printf(" Frames tegnet: %i\n", frames_drawn);
-#ifndef DEBUG
-  //SDL_DestroyTexture(display);
-  //SDL_DestroyRenderer(renderer);
-  //SDL_DestroyWindow(window);
-  SDL_Quit();
-#endif
+
+  renderer_cleanup(&context);
+
 
   // print_state(&cpu);
 
