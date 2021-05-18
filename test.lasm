@@ -1,30 +1,47 @@
 
+// Punktene
+MOV_imm, R3, 64
+MOV_imm, R4, 0
+MOV_imm, R5, 32
+MOV_imm, R6, 64
+MOV_imm, R7, 96
+MOV_imm, R8, 63
 
+MOV_imm, R0, STORAGE_OFFSET-4
+MOV_imm, R1, 120 // hvor mange bilder vi vil tegne
+STR_adr, R1, R0
 
 // Skriver våre punkter til minne
 MOV_imm, R1, STORAGE_OFFSET
-MOV_imm, R0, 38
+MOV, R0, R3
 STR_adr, R0, R1
 
 ADD_imm, R1, 4
-MOV_imm, R0, 20
+MOV, R0, R4
 STR_adr, R0, R1
 
 ADD_imm, R1, 4
-MOV_imm, R0, 10
+MOV, R0, R5
 STR_adr, R0, R1
 
 ADD_imm, R1, 4
-MOV_imm, R0, 70
+MOV, R0, R6
 STR_adr, R0, R1
 
 ADD_imm, R1, 4
-MOV_imm, R0, 96
+MOV, R0, R7
 STR_adr, R0, R1
 
 ADD_imm, R1, 4
-MOV_imm, R0, 72
+MOV, R0, R8
 STR_adr, R0, R1
+
+start_next_triangle:
+
+// først vil vi tømme skjermen
+
+
+
 
 
 // Les ut y-koordinater
@@ -230,9 +247,11 @@ MOV, R7, R14
 MOV, R8, R15
 MOV, R9, R13  // om korte side er på høyre side eller ikke...
 
-MOV_imm, R6,  FRAMEBUFFER_OFFSET + 128*4*20 // y-offset
-MOV_imm, R13, 20 // start-verdi for y
-MOV_imm, R14,       0x5511ffff
+// @TODO!! - Her vil vi lagre den laveste y-koordinaten for å starte kjøringen derfra
+
+MOV_imm, R6,  FRAMEBUFFER_OFFSET + 128*4 // y-offset
+MOV_imm, R13, 0 // start-verdi for y 
+MOV_imm, R14, 0x5511ffff
 
 draw_next_line:
 
@@ -286,26 +305,54 @@ draw_next_pixel:
 MOV_imm, R14, 0x5511ffff
 
 CMP, R5, R4
-JLT, finish_draw_line
+JLE, finish_draw_line // @TODO - avgjør om det skal være LE eller LT her!!
 STR_adr, R14, R4      // Skriv til piksel
 CMP, R4, R5
+//DRW, 0, 0
 ADD_imm, R4, 4
 JLT, draw_next_pixel
 
 finish_draw_line:
 ADD_imm, R13, 1
 ADD_imm, R6, 128*4
-CMP_imm, R13, 120
+CMP, R13, R8 // Test om vi er ved sluttpunktet
 JNE,     draw_next_line
 
 done_render:
 
-MOV_imm, R1, 120 // how many frames to draw
-draw_rendered_frame:
+//MOV_imm, R1, 60 // how many frames to draw
+//draw_rendered_frame:
 DRW,     0,  0
+//SUB_imm, R1, 1
+//CMP_imm, R1, 0
+//JGT,     draw_rendered_frame
+
+
+MOV_imm, R1, STORAGE_OFFSET
+LDR_adr, R0, R1
+ADD_imm, R0, 1
+STR_adr, R0, R1
+
+
+MOV_imm, R0, FRAMEBUFFER_OFFSET
+MOV_imm, R1, FRAMEBUFFER_OFFSET + 128*128*4
+MOV_imm, R2, 0
+blank_screen:
+STR_adr, R2, R0
+ADD_imm, R0, 4
+CMP, R0, R1
+JLT, blank_screen
+
+
+MOV_imm, R0, STORAGE_OFFSET-4
+LDR_adr, R1, R0
 SUB_imm, R1, 1
 CMP_imm, R1, 0
-JGT,     draw_rendered_frame
+JEQ, 10000
+STR_adr, R1, R0
+
+JMP, start_next_triangle
+
 
 JMP,   10000
 
