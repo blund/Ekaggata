@@ -1,6 +1,6 @@
 
 // Punktene
-MOV_imm, R3, 64
+MOV_imm, R3, 0
 MOV_imm, R4, 0
 MOV_imm, R5, 32
 MOV_imm, R6, 64
@@ -8,7 +8,7 @@ MOV_imm, R7, 96
 MOV_imm, R8, 63
 
 MOV_imm, R0, STORAGE_OFFSET-4
-MOV_imm, R1, 120 // hvor mange bilder vi vil tegne
+MOV_imm, R1, 128 // hvor mange bilder vi vil tegne
 STR_adr, R1, R0
 
 // Skriver våre punkter til minne
