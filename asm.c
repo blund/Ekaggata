@@ -6,10 +6,9 @@
 #include <limits.h>
 
 #include <unistd.h>
-#include "asm.h"
 
-#define  SDL_DISABLE_IMMINTRIN_H 1
-#include <SDL2/SDL.h>
+#include "asm.h"
+#include "renderer.h"
 
 
 // Om grafikk
@@ -35,9 +34,7 @@
 #define INSTR(PC) inst_mem[cpu.r[PC]]
 #define ASM(opcode, a, b) (Instr){.op = opcode, .reg_to = a, .reg_from = b}
 
-SDL_Renderer *renderer;
-SDL_Texture  *display;
-
+Render_Context context;
 int frames_drawn = 0;
 
 // https://en.wikipedia.org/wiki/X_Macro
@@ -269,32 +266,7 @@ inline void eval (CPU* cpu, Instr instr) {
     break;
 
   case DRW:
-#ifndef DEBUG
-    // Copy texture to render target
-    SDL_UpdateTexture(display, NULL, cpu->framebuffer, DISPLAY_SIZE*sizeof(uint32_t)); // @Merk - ganger her med bredden av skjermen (bytePitch)
-    
-    SDL_SetRenderTarget(renderer, NULL);
-        
-    //Clear screen
-    SDL_RenderClear(renderer);
-
-
-    SDL_Rect framebuffer_source_dimensions = {
-      .x = 0,
-      .y = 0,
-      .w = DISPLAY_SIZE,
-      .h = DISPLAY_SIZE,
-    };
-    
-    //Render texture to screen
-    SDL_RenderCopy(renderer, display, &framebuffer_source_dimensions, NULL); // NULL viser til at skjermen skal fylles med hvanåenn var i source_rect
-    
-    //Update screen
-    SDL_RenderPresent(renderer);
-
-    frames_drawn++;
-    usleep(33);
-#endif
+    render(&context, cpu);
     break;
     
   default:
@@ -305,16 +277,9 @@ inline void eval (CPU* cpu, Instr instr) {
 
 
 int main () {
-#ifndef DEBUG
-  SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO);
-  SDL_Window * window = SDL_CreateWindow("EKAGGATA",
-                                         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                         512, 512, 0);
-  
-  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED /*|SDL_RENDERER_PRESENTVSYNC*/);
-  display  = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 128, 128);
-#endif
 
+
+  setup_graphics(&context, 512, 512, 128, 128);
   
   // Initialiser CPU og minne
   CPU cpu = {};
@@ -371,9 +336,9 @@ int main () {
 
   printf(" Frames tegnet: %i\n", frames_drawn);
 #ifndef DEBUG
-  SDL_DestroyTexture(display);
-  SDL_DestroyRenderer(renderer);
-  SDL_DestroyWindow(window);
+  //SDL_DestroyTexture(display);
+  //SDL_DestroyRenderer(renderer);
+  //SDL_DestroyWindow(window);
   SDL_Quit();
 #endif
 

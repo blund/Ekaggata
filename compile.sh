@@ -30,7 +30,7 @@ echo
 echo "Kompilerer med ${CC}"
 echo
 
-FILES="asm.c"
+FILES="asm.c renderer.c"
 LINKER_FLAGS=" -I/usr/include/SDL2 -lSDL2"
 
 
