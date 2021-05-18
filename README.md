@@ -5,7 +5,7 @@ A small virtual computer
 
 *Shifting gradient rendered on Ekagatta*
 
-
+---
 
 ## What is this
 
@@ -35,7 +35,7 @@ Things that are missing but I plan on adding:
   * Definitions of memory mappings
   * And probably more!
 
-
+---
 
 ![Oops! Failed to load gif!](http://blund.site/ekaggata-2.gif)
 
