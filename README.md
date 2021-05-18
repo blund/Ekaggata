@@ -2,7 +2,9 @@
 A small virtual computer
 
 ![Oops! Failed to load gif!](http://blund.site/ekaggata.gif)
+*Shifting gradient rendered on Ekagatta*
 ## What is this
+
 
 Ekaggata is an attempt to create a virtual computer that works sort of like an embedded system, where hardware IO is accessible through registers on the machine. 
 
@@ -28,3 +30,6 @@ Things that are missing but I plan on adding:
   * An actual assembler to get rid of Python as a dependency
   * Definitions of memory mappings
   * And probably more!
+
+![Oops! Failed to load gif!](http://blund.site/ekaggata-2.gif)
+*Triangle rasterizer written in the custom assembly language, running on Ekaggata*
