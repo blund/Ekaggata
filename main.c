@@ -1,14 +1,11 @@
-#include <stdio.h>
 #include <malloc.h>
-#include <stdlib.h>
-
 #include <limits.h>
-
 #include <unistd.h>
+
 
 #include "asm.h"
 #include "renderer.h"
-
+#include "helpers.h"
 
 // Om grafikk
 // https://gamedev.stackexchange.com/questions/157604/how-to-get-access-to-framebuffer-as-a-uint32-t-in-sdl2
@@ -36,72 +33,8 @@ Render_Context context      = {}; // kontekst for tegning
 int            frames_drawn = 0;
 
 // https://en.wikipedia.org/wiki/X_Macro
-const char* register_names[] = {
-#define X(name) [name] = #name,
-#include "registers.x"
-#undef X
-};
 
-const char* opcode_names[] = {
-#define X(op, name, type) [op] = #name,
-#include "opcodes.x"
-#undef X
-};
-
-const Opcode_Type opcode_types[] = {
-#define X(op, name, type) [op] = type,
-#include "opcodes.x"
-#undef X
-};
-
-const Op opcodes[] = {
-#define X(op, name, type) [op] = op,
-#include "opcodes.x"
-#undef X
-};
-
-
-
-void print_state (CPU* cpu) {
-  for (int i = 0; i < 15; i++) {
-    printf("R%i = 0x%x (%i)\n", i, cpu->r[i], cpu->r[i]);
-  }
-  printf("PC = 0x%x (%i)\n", cpu->r[PC],  cpu->r[PC]);
-  printf("\n");
-}
-
-
-void print_instr (Instr instr) {
-  if (!opcode_types[instr.op]) {
-    printf(" -> NOP\n");
-    return;
-  }
-  
-  if ((opcodes[instr.op] >= JMP) && (opcodes[instr.op] <= JGT)) {
-    printf(" -> JMP %i\n", instr.reg_to);
-    return;
-  }
-    
-  printf(" -> %s %s ", opcode_names[instr.op], register_names[instr.reg_to]);
-  
-  switch (opcode_types[instr.op]) {
-  case REG:
-    printf("%s\n", register_names[instr.reg_from]);
-    break;
-  case IMM:
-    printf("$0x%x (%i)\n", instr.imm, instr.imm);
-    break;
-  case ADR:
-    printf("[%s]\n", register_names[instr.reg_from]);
-    break;
-  default:
-    printf("Fikk ugyldig opcode-type. Du har nok rørt bs-data\n");
-    exit(1);
-  }
-}
-
-void eval (CPU* cpu, Instr instr);
-inline void eval (CPU* cpu, Instr instr) {
+void eval (CPU* cpu, Instr instr) {
   // @TODO - her er det mulighet for å legge inn noen asserts i kjøringen! Som at man har overtrådt minnegrenser eller noe slik.
   switch (instr.op) {
 
@@ -233,7 +166,7 @@ inline void eval (CPU* cpu, Instr instr) {
       printf("ge: %i\n", !!(cpu->flags & N) == !!(cpu->flags & V));
       printf("gt: %i\n", !(cpu->flags & Z) && (cpu->flags & N) == (cpu->flags & V));
       printf("lt: %i\n", (cpu->flags & N) != (cpu->flags & V));
-      #endif
+#endif
     }
     break;
     
@@ -253,13 +186,14 @@ inline void eval (CPU* cpu, Instr instr) {
       cpu->flags |= unsigned_overflow  ? C : 0; 
       cpu->flags |= signed_overflow    ? V : 0;
 
-      #ifdef DEBUG
+#ifdef DEBUG
       printf("flags: %x\n", cpu->flags);
       printf("eq: %i\n", (cpu->flags & Z));
       printf("ge: %i\n", !!(cpu->flags & N) == !!(cpu->flags & V));
       printf("gt: %i\n", !(cpu->flags & Z) && (cpu->flags & N) == (cpu->flags & V));
       printf("lt: %i\n", (cpu->flags & N) != (cpu->flags & V));
-      #endif
+#endif
+      
     }
     break;
 
@@ -286,18 +220,18 @@ int main () {
   cpu.framebuffer = cpu.memory + FRAMEBUFFER_OFFSET; // med assembly (enda?)
 
 
-  Instr*        inst_mem = cpu.memory; // Bare et 'alias' for minnet hvor instruksjoner ligger.
-  unsigned int* pixels   = (unsigned int*)cpu.framebuffer; // Sier hvor renderer skal hente sine piksler :)
+  Instr *inst_mem = cpu.memory; // Bare et 'alias' for minnet hvor instruksjoner ligger.
+  u32   *pixels   = (u32*)cpu.framebuffer; // Sier hvor renderer skal hente sine piksler :)
   
-
+#ifdef DEBUG
   puts("\n\n [ INFO ] \n");
-  printf("Instr size: %lu bytes\n", sizeof(Instr));
-  puts("");
+  printf("Instr size: %lu bytes\n\n", sizeof(Instr));
   printf("mem start: %p\n", inst_mem); 
   puts("\n\n [ STARTER PROGRAM ] \n");
+#endif
 
-  int line = 0;
   
+  int line = 0;
 #define X(op, a, b) inst_mem[line++] = ASM(op, a, b);
 #include "build/test.xlasm"
 #undef X
@@ -305,9 +239,9 @@ int main () {
   while (INSTR(PC).op) {
     Op this_op = INSTR(PC).op;
     
-    #ifdef DEBUG
+#ifdef DEBUG
     print_instr(INSTR(PC));
-    #endif
+#endif
  
     eval(&cpu, INSTR(PC));
     if (!(this_op >= JMP && this_op <= JGE)) {
@@ -315,13 +249,14 @@ int main () {
       cpu.r[PC]++;
     }
 
-    #ifdef DEBUG
+#ifdef DEBUG
     print_state(&cpu);
     read(0, 0, 1); // @MERK - trykk enter for å steppe i kjøringen.
-    #endif
+#endif
     
 
   }
+
 #ifdef DEBUG
   print_state(&cpu);
 #endif
@@ -329,11 +264,5 @@ int main () {
   printf(" Frames tegnet: %i\n", frames_drawn);
 
   renderer_cleanup(&context);
-
-
-  // print_state(&cpu);
-
-  
-
   
 }
