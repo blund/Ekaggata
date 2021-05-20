@@ -1,6 +1,7 @@
 #ifndef RENDERER_H
 #define RENDERER_H
 
+#define  SDL_DISABLE_IMMINTRIN_H 1
 #include <SDL2/SDL.h>
 #include "base.h"
 
