@@ -8,6 +8,7 @@
 #define C (1 << 2) // Carry
 #define V (1 << 3) // Overflow
 
+
 typedef enum Reg {
 #define X(name) name,
 #include "registers.x"
@@ -15,7 +16,7 @@ typedef enum Reg {
 } Reg;
 
 typedef enum Op {
-#define X(opcode, name, type) opcode,
+#define X(opcode, index, name, type) opcode,
 #include "opcodes.x"
 #undef X
 } Op;
@@ -44,6 +45,8 @@ typedef struct Instr {
 typedef struct CPU {
   s32 r[32]; // @MERK! - 16 registre allokert, men vi bruker kun 17 (16 + PC)
 
+  Instr *instr;
+  
   u8 flags;
   
   void *memory;

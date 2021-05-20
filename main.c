@@ -26,7 +26,7 @@
 #define DISPLAY_SIZE 128
 #define WINDOW_SIZE  512  
 
-#define INSTR(PC) inst_mem[cpu.r[PC]]
+#define INSTR(PC) inst_mem[cpu.r[PC*sizeof(Instr)]]
 #define ASM(opcode, a, b) (Instr){.op = opcode, .reg_to = a, .reg_from = b}
 
 Render_Context context      = {}; // kontekst for tegning
@@ -34,179 +34,77 @@ int            frames_drawn = 0;
 
 // https://en.wikipedia.org/wiki/X_Macro
 
-void eval (CPU* cpu, Instr instr) {
-  // @TODO - her er det mulighet for å legge inn noen asserts i kjøringen! Som at man har overtrådt minnegrenser eller noe slik.
-  switch (instr.op) {
+// clang-format off
 
-  case MOV:
-    cpu->r[instr.reg_to] = cpu->r[instr.reg_from];
-    break;
+#define REG_TO   cpu->r[cpu->instr->reg_to]
+#define REG_FROM cpu->r[cpu->instr->reg_from]
+#define IMM      cpu->instr->reg_from
 
-  case MOV_imm:
-    
-    cpu->r[instr.reg_to] = instr.imm;
-    break;
+void op_nop     (CPU* cpu) { return; }
+void op_mov     (CPU* cpu) { REG_TO =  REG_FROM; }
+void op_mov_imm (CPU* cpu) { REG_TO =  IMM; }
+void op_add     (CPU* cpu) { REG_TO += REG_FROM; }
+void op_add_imm (CPU* cpu) { REG_TO += IMM; }
+void op_sub     (CPU* cpu) { REG_TO -= REG_FROM; }
+void op_sub_imm (CPU* cpu) { REG_TO -= IMM; }
+void op_mul     (CPU* cpu) { REG_TO *= REG_FROM; }
+void op_mul_imm (CPU *cpu) { REG_TO *= IMM; }
+void op_div     (CPU *cpu) { REG_TO /= REG_FROM; }
+void op_div_imm (CPU *cpu) { REG_TO /= IMM; }
+void op_ldr     (CPU *cpu) { REG_TO = *(s32 *)(cpu->memory + REG_FROM); }
+void op_str     (CPU *cpu) { *(s32 *)(cpu->memory + REG_FROM) = REG_TO; } // @MERK at vi bruker reg_to (første argument) som kilde.
+void op_jmp     (CPU *cpu) { cpu->r[PC] = cpu->instr->reg_to - 1; }       // @MERK - vi trekker fra 1 på alle jmp siden vi inkrementerer pc etter instruksjon utført..
+void op_jeq     (CPU *cpu) { if (cpu->flags & Z)                                                  cpu->r[PC] = cpu->instr->reg_to - 1; }
+void op_jne     (CPU *cpu) { if (!(cpu->flags & Z))                                               cpu->r[PC] = cpu->instr->reg_to - 1; }
+void op_jgt     (CPU *cpu) { if (!(cpu->flags & Z) && (!!(cpu->flags & N) == !!(cpu->flags & V))) cpu->r[PC] = cpu->instr->reg_to - 1; }
+void op_jge     (CPU *cpu) { if (!!(cpu->flags & N) == !!(cpu->flags & V))                        cpu->r[PC] = cpu->instr->reg_to - 1; }
+void op_jlt     (CPU *cpu) { if ((cpu->flags & N) != (cpu->flags & V))                            cpu->r[PC] = cpu->instr->reg_to - 1; } 
+void op_jle     (CPU *cpu) { if ((cpu->flags & Z) || (!!(cpu->flags & N) != !!(cpu->flags & V)))  cpu->r[PC] = cpu->instr->reg_to - 1; } 
+void op_drw     (CPU *cpu) { render(&context, cpu); frames_drawn++; }
+void op_exit    (CPU *cpu) { exit(0); }; // @TODO vet ikke om dette er en fornuftig måte å slutte programmet på...
+// clang-format on
 
-  case ADD:
-    cpu->r[instr.reg_to] += cpu->r[instr.reg_from];
-    break;
-
-  case ADD_imm:
-    cpu->r[instr.reg_to] += instr.imm;
-    break;
-
-  case SUB:
-    cpu->r[instr.reg_to] -= cpu->r[instr.reg_from];
-    break;
-    
-  case SUB_imm:
-    cpu->r[instr.reg_to] -= instr.imm;
-    break;
-
-  case MUL:
-    cpu->r[instr.reg_to] *= cpu->r[instr.reg_from];
-    break;
-
-  case MUL_imm:
-    cpu->r[instr.reg_to] *= instr.imm;
-    break;
-
-  case DIV:
-    cpu->r[instr.reg_to] /= cpu->r[instr.reg_from];
-    break;
-
-  case DIV_imm:
-    cpu->r[instr.reg_to] /= instr.imm;
-    break;
-
-  case LDR_adr:
-    cpu->r[instr.reg_to] = *(s32 *)(cpu->memory + cpu->r[instr.reg_from]);
-    break;
-
-  case STR_adr:
-    *(s32 *)(cpu->memory + cpu->r[instr.reg_from]) = cpu->r[instr.reg_to]; // @MERK at vi bruker reg_to (første argument) som kilde.
-    break;
+void op_cmp (CPU *cpu) {
+  // Om hvordan man lager LT, GT osv... fra NZCV
+  // https://community.arm.com/developer/ip-products/processors/b/processors-ip-blog/posts/condition-codes-1-condition-flags-and-codes
   
-  case JMP:
-    cpu->r[PC] = instr.reg_to;
-    break;
-    
-  case JMP_imm:
-    cpu->r[PC] = instr.reg_to; // @MERK!!!! - for rekkefølge, vil bruke første arg.
-    break;
+  s32 diff              =  REG_TO - REG_FROM;
+  u32 unsigned_overflow = (REG_TO + REG_FROM) < REG_TO;
+  u32 signed_overflow   = (REG_TO < 0) && (REG_FROM > (INT_MAX - REG_FROM));
 
-  case JEQ:
-    if (cpu->flags & Z) {
-      cpu->r[PC] = instr.reg_to;
-    } else {
-      cpu->r[PC]++;
-    }
-    break;
-
-  case JNE:
-    if (!(cpu->flags & Z)) {
-      cpu->r[PC] = instr.reg_to;
-    } else {
-      cpu->r[PC]++;
-    }
-    break;
-
-  case JGT:
-    if (!(cpu->flags & Z) && (!!(cpu->flags & N) == !!(cpu->flags & V))) {
-      cpu->r[PC] = instr.reg_to;
-    } else {
-      cpu->r[PC]++;
-    }
-    break;
-    
-  case JGE:
-    if (!!(cpu->flags & N) == !!(cpu->flags & V)) {
-      cpu->r[PC] = instr.reg_to;
-    } else {
-      cpu->r[PC]++;
-    }
-    break; 
-
-  case JLT:
-    if ((cpu->flags & N) != (cpu->flags & V)) {
-      cpu->r[PC] = instr.reg_to;
-    } else {
-      cpu->r[PC]++;
-    }
-    break;
-
-  case JLE:
-    if ((cpu->flags & Z) || (!!(cpu->flags & N) != !!(cpu->flags & V))) {
-      cpu->r[PC] = instr.reg_to;
-    } else {
-      cpu->r[PC]++;
-    }
-    break;
-          
-    
-  case CMP:
-    {
-      // Om hvordan man lager LT, GT osv... fra NZCV
-      // https://community.arm.com/developer/ip-products/processors/b/processors-ip-blog/posts/condition-codes-1-condition-flags-and-codes
+  cpu->flags = 0;
       
-      s32 diff              =  cpu->r[instr.reg_to] - cpu->r[instr.reg_from];
-      u32 unsigned_overflow = (cpu->r[instr.reg_to] + cpu->r[instr.reg_from]) < cpu->r[instr.reg_to];
-      u32 signed_overflow   = (cpu->r[instr.reg_to] < 0) && (cpu->r[instr.reg_from] > (INT_MAX - cpu->r[instr.reg_from]));
+  cpu->flags |= diff               ? 0 : Z;
+  cpu->flags |= diff < 0           ? N : 0;
+  cpu->flags |= unsigned_overflow  ? C : 0; 
+  cpu->flags |= signed_overflow    ? V : 0;
 
-      cpu->flags = 0;
-      
-      cpu->flags |= diff               ? 0 : Z;
-      cpu->flags |= diff < 0           ? N : 0;
-      cpu->flags |= unsigned_overflow  ? C : 0; 
-      cpu->flags |= signed_overflow    ? V : 0;
-
-#ifdef DEBUG
-      printf("flags: %x\n", cpu->flags);
-      printf("eq: %i\n", (cpu->flags & Z));
-      printf("ge: %i\n", !!(cpu->flags & N) == !!(cpu->flags & V));
-      printf("gt: %i\n", !(cpu->flags & Z) && (cpu->flags & N) == (cpu->flags & V));
-      printf("lt: %i\n", (cpu->flags & N) != (cpu->flags & V));
-#endif
-    }
-    break;
-    
-  case CMP_imm:
-    {
-      // Om hvordan man lager LT, GT osv... fra NZCV
-      // https://community.arm.com/developer/ip-products/processors/b/processors-ip-blog/posts/condition-codes-1-condition-flags-and-codes
-      
-      s32 diff              =  cpu->r[instr.reg_to] - instr.imm;
-      u32 unsigned_overflow = (cpu->r[instr.reg_to] + instr.imm) < cpu->r[instr.reg_to];
-      s32 signed_overflow   = (cpu->r[instr.reg_to] < 0) && (instr.imm > INT_MAX - instr.imm);
-
-      cpu->flags = 0;
-      
-      cpu->flags |= diff               ? 0 : Z;
-      cpu->flags |= diff < 0           ? N : 0;
-      cpu->flags |= unsigned_overflow  ? C : 0; 
-      cpu->flags |= signed_overflow    ? V : 0;
-
-#ifdef DEBUG
-      printf("flags: %x\n", cpu->flags);
-      printf("eq: %i\n", (cpu->flags & Z));
-      printf("ge: %i\n", !!(cpu->flags & N) == !!(cpu->flags & V));
-      printf("gt: %i\n", !(cpu->flags & Z) && (cpu->flags & N) == (cpu->flags & V));
-      printf("lt: %i\n", (cpu->flags & N) != (cpu->flags & V));
-#endif
-      
-    }
-    break;
-
-  case DRW:
-    render(&context, cpu);
-    frames_drawn++;
-    break;
-    
-  default:
-    printf("FEIL I KJØRING! Fikk ukjent opcode %i. Forsøker du å kjøre vilkårlig data?\n", instr.op);
-    exit(1);
-  }
 }
+
+void op_cmp_imm(CPU *cpu) {
+  // Om hvordan man lager LT, GT osv... fra NZCV
+  // https://community.arm.com/developer/ip-products/processors/b/processors-ip-blog/posts/condition-codes-1-condition-flags-and-codes
+      
+  s32 diff              =  REG_TO - cpu->instr->imm;
+  u32 unsigned_overflow = (REG_TO + cpu->instr->imm) < REG_TO;
+  s32 signed_overflow   = (REG_TO < 0) && (cpu->instr->imm > INT_MAX - cpu->instr->imm);
+
+  cpu->flags = 0;
+      
+  cpu->flags |= diff               ? 0 : Z;
+  cpu->flags |= diff < 0           ? N : 0;
+  cpu->flags |= unsigned_overflow  ? C : 0; 
+  cpu->flags |= signed_overflow    ? V : 0;
+}     
+
+
+void (*ops[])(CPU *cpu) = { // @MERK henter inn navnene på funksjonene over fra parallelle tabell i opcodes.x, for å sørge for at indekser matcher og at alle er med.
+#define X(opcode, index, name, type) index,
+#include "opcodes.x"
+#undef X
+};
+
+
 
 
 int main () {
@@ -215,7 +113,7 @@ int main () {
   // Initialiser CPU og minne
   CPU cpu = {};
 
-  cpu.memory      = malloc(4*1024*1024);             
+  cpu.memory      = malloc(1024*1024);             
   cpu.storage     = cpu.memory + STORAGE_OFFSET;     // @MERK - Disse to er bare debug-verdier som kan brukes i main-funksjonen. Kan ikke nås
   cpu.framebuffer = cpu.memory + FRAMEBUFFER_OFFSET; // med assembly (enda?)
 
@@ -235,19 +133,32 @@ int main () {
 #define X(op, a, b) inst_mem[line++] = ASM(op, a, b);
 #include "build/test.xlasm"
 #undef X
+  int run = 1;
+  while (run) {
+    cpu.instr = &inst_mem[cpu.r[PC]];
 
-  while (INSTR(PC).op) {
-    Op this_op = INSTR(PC).op;
+
+    if (!cpu.instr->op) {
+      break;
+    }
+    
+    (*ops[cpu.instr->op])(&cpu);
     
 #ifdef DEBUG
-    print_instr(INSTR(PC));
+    print_instr(*cpu.instr);
 #endif
- 
-    eval(&cpu, INSTR(PC));
-    if (!(this_op >= JMP && this_op <= JGE)) {
-      // Jumps inkrementerer PC av seg selv :)
-      cpu.r[PC]++;
-    }
+
+    cpu.r[PC]++;
+    
+
+    
+#ifdef DEBUG
+  printf("flags: %x\n", cpu.flags);
+  printf("eq: %i\n", (cpu.flags & Z));
+  printf("ge: %i\n", !!(cpu.flags & N) == !!(cpu.flags & V));
+  printf("gt: %i\n", !(cpu.flags & Z) && (cpu.flags & N) == (cpu.flags & V));
+  printf("lt: %i\n", (cpu.flags & N) != (cpu.flags & V));
+#endif
 
 #ifdef DEBUG
     print_state(&cpu);
@@ -260,9 +171,7 @@ int main () {
 #ifdef DEBUG
   print_state(&cpu);
 #endif
-
   printf(" Frames tegnet: %i\n", frames_drawn);
 
   renderer_cleanup(&context);
-  
 }

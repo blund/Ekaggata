@@ -12,19 +12,19 @@ const char* register_names[] = {
 };
 
 const char* opcode_names[] = {
-#define X(op, name, type) [op] = #name,
+#define X(op, index, name, type) [op] = #name,
 #include "opcodes.x"
 #undef X
 };
 
 const Opcode_Type opcode_types[] = {
-#define X(op, name, type) [op] = type,
+#define X(op, index, name, type) [op] = type,
 #include "opcodes.x"
 #undef X
 };
 
 const Op opcodes[] = {
-#define X(op, name, type) [op] = op,
+#define X(op, index, name, type) [op] = op,
 #include "opcodes.x"
 #undef X
 };
