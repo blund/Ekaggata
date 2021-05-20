@@ -54,13 +54,14 @@ void op_div_imm (CPU *cpu) { REG_TO /= IMM; }
 void op_ldr     (CPU *cpu) { REG_TO = *(s32 *)(cpu->memory + REG_FROM); }
 void op_str     (CPU *cpu) { *(s32 *)(cpu->memory + REG_FROM) = REG_TO; } // @MERK at vi bruker reg_to (første argument) som kilde.
 void op_jmp     (CPU *cpu) { cpu->r[PC] = cpu->instr->reg_to - 1; }       // @MERK - vi trekker fra 1 på alle jmp siden vi inkrementerer pc etter instruksjon utført..
-void op_jeq     (CPU *cpu) { if (cpu->flags & Z)    cpu->r[PC] = cpu->instr->reg_to - 1; }
-void op_jne     (CPU *cpu) { if (!(cpu->flags & Z)) cpu->r[PC] = cpu->instr->reg_to - 1; }
+void op_jeq     (CPU *cpu) { if (cpu->flags & Z)                                                  cpu->r[PC] = cpu->instr->reg_to - 1; }
+void op_jne     (CPU *cpu) { if (!(cpu->flags & Z))                                               cpu->r[PC] = cpu->instr->reg_to - 1; }
 void op_jgt     (CPU *cpu) { if (!(cpu->flags & Z) && (!!(cpu->flags & N) == !!(cpu->flags & V))) cpu->r[PC] = cpu->instr->reg_to - 1; }
 void op_jge     (CPU *cpu) { if (!!(cpu->flags & N) == !!(cpu->flags & V))                        cpu->r[PC] = cpu->instr->reg_to - 1; }
 void op_jlt     (CPU *cpu) { if ((cpu->flags & N) != (cpu->flags & V))                            cpu->r[PC] = cpu->instr->reg_to - 1; } 
 void op_jle     (CPU *cpu) { if ((cpu->flags & Z) || (!!(cpu->flags & N) != !!(cpu->flags & V)))  cpu->r[PC] = cpu->instr->reg_to - 1; } 
 void op_drw     (CPU *cpu) { render(&context, cpu); frames_drawn++; }
+void op_exit    (CPU *cpu) { exit(0); }; // @TODO vet ikke om dette er en fornuftig måte å slutte programmet på...
 // clang-format on
 
 void op_cmp (CPU *cpu) {
@@ -104,6 +105,8 @@ void (*ops[])(CPU *cpu) = { // @MERK henter inn navnene på funksjonene over fra
 };
 
 
+
+
 int main () {
   setup_graphics(&context, WINDOW_SIZE, WINDOW_SIZE, DISPLAY_SIZE, DISPLAY_SIZE);
   
@@ -130,10 +133,15 @@ int main () {
 #define X(op, a, b) inst_mem[line++] = ASM(op, a, b);
 #include "build/test.xlasm"
 #undef X
-
-  while (1) {
+  int run = 1;
+  while (run) {
     cpu.instr = &inst_mem[cpu.r[PC]];
 
+
+    if (!cpu.instr->op) {
+      break;
+    }
+    
     (*ops[cpu.instr->op])(&cpu);
     
 #ifdef DEBUG
@@ -141,6 +149,7 @@ int main () {
 #endif
 
     cpu.r[PC]++;
+    
 
     
 #ifdef DEBUG

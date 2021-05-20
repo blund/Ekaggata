@@ -3,8 +3,8 @@ X(MOV,     op_mov,     MOV, REG) \
 X(MOV_imm, op_mov_imm, MOV, IMM) \
 X(ADD,     op_add,     ADD, REG) \
 X(ADD_imm, op_add_imm, ADD, IMM) \
-X(SUB,     op_add,     ADD, REG) \
-X(SUB_imm, op_add_imm, ADD, IMM) \
+X(SUB,     op_sub,     SUB, REG) \
+X(SUB_imm, op_sub_imm, SUB, IMM) \
 X(MUL,     op_mul,     MUL, REG) \
 X(MUL_imm, op_mul_imm, MUL, IMM) \
 X(DIV,     op_div,     DIV, REG) \
@@ -20,4 +20,5 @@ X(JLT,     op_jlt,     JGT, IMM) \
 X(JLE,     op_jle,     JGE, IMM) \
 X(CMP,     op_cmp,     CMP, REG) \
 X(CMP_imm, op_cmp_imm, CMP, IMM) \
-X(DRW,     op_drw,     DRW, NON)
+X(DRW,     op_drw,     DRW, NON) \
+X(EXT,     op_exit,    EXT, NON)
