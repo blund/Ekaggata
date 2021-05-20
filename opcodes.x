@@ -1,24 +1,23 @@
-X(NOP,     NOP, NON) \
-X(MOV,     MOV, REG) \
-X(MOV_imm, MOV, IMM) \
-X(ADD,     ADD, REG) \
-X(ADD_imm, ADD, IMM) \
-X(SUB,     SUB, REG) \
-X(SUB_imm, SUB, IMM) \
-X(MUL,     MUL, REG) \
-X(MUL_imm, MUL, IMM) \
-X(DIV,     DIV, REG) \
-X(DIV_imm, DIV, IMM) \
-X(STR_adr, STR, ADR) \
-X(LDR_adr, LDR, ADR) \
-X(JMP,     JMP, ADR) \
-X(JMP_imm, JMP, IMM) \
-X(JEQ,     JEQ, IMM) \
-X(JNE,     JNE, IMM) \
-X(JLT,     JLT, IMM) \
-X(JLE,     JLT, IMM) \
-X(JGT,     JGT, IMM) \
-X(JGE,     JGE, IMM) \
-X(CMP,     CMP, REG) \
-X(CMP_imm, CMP, IMM) \
-X(DRW,     DRW, NON)
+X(NOP,     op_nop,     NOP, NON) \
+X(MOV,     op_mov,     MOV, REG) \
+X(MOV_imm, op_mov_imm, MOV, IMM) \
+X(ADD,     op_add,     ADD, REG) \
+X(ADD_imm, op_add_imm, ADD, IMM) \
+X(SUB,     op_add,     ADD, REG) \
+X(SUB_imm, op_add_imm, ADD, IMM) \
+X(MUL,     op_mul,     MUL, REG) \
+X(MUL_imm, op_mul_imm, MUL, IMM) \
+X(DIV,     op_div,     DIV, REG) \
+X(DIV_imm, op_div_imm, DIV, IMM) \
+X(LDR_adr, op_ldr,     LDR, ADR) \
+X(STR_adr, op_str,     STR, ADR) \
+X(JMP,     op_jmp,     JMP, ADR) \
+X(JEQ,     op_jeq,     JEQ, IMM) \
+X(JNE,     op_jne,     JNE, IMM) \
+X(JGT,     op_jgt,     JGT, IMM) \
+X(JGE,     op_jge,     JGE, IMM) \
+X(JLT,     op_jlt,     JGT, IMM) \
+X(JLE,     op_jle,     JGE, IMM) \
+X(CMP,     op_cmp,     CMP, REG) \
+X(CMP_imm, op_cmp_imm, CMP, IMM) \
+X(DRW,     op_drw,     DRW, NON)
